@@ -11,7 +11,7 @@ from spark_manager import SparkManager
 from mongodb_manager import MongoDBManager
 from spark_processor import SparkProcessor
 from analysis_engine import AnalysisEngine
-from eda_analyzer import EDAAnalyzer  # Add this import
+from eda_analyzer import EDAAnalyzer
 
 def generate_summary_report(analysis_results):
     """Generate a comprehensive summary report"""
@@ -138,7 +138,7 @@ def main():
         print("\n1. Initial Setup")
         Config.setup_directories()
         
-        # Step 2: EDA Analysis (NEW STEP)
+        # Step 2: EDA Analysis
         print("\n2.Exploratory Data Analysis")
         eda_analyzer = EDAAnalyzer()
         eda_results = []
@@ -194,10 +194,9 @@ def main():
                 print(f" Successfully processed {city} data")
             else:
                 print(f" Failed to process {city} data with Spark")
-        
-            # Step 6: Data Analysis and Visualization
-        # Step 5.5: Ride-Sharing Data Collection
-        print("\n5.5 Ride-Sharing Data Collection")
+
+        # Step 6: Ride-Sharing Data Collection
+        print("\n6. Ride-Sharing Data Collection")
         try:
             from ride_share_simulator import RideShareSimulator
             
@@ -223,8 +222,8 @@ def main():
             import traceback
             traceback.print_exc()
 
-
-        print("\n6. Data Analysis and Visualization")
+        # Step 7: Data Analysis and Visualization
+        print("\n7. Data Analysis and Visualization")
         analysis_engine = AnalysisEngine()
         all_analysis_results = []
 
@@ -250,34 +249,22 @@ def main():
             else:
                 print(f"No data available for analysis in {city}")
 
-        # Step 7: Ride-Sharing Data Collection and Analysis
-        print("\n7. Ride-Sharing Data Collection and Analysis")
+        # Step 8: Ride-Sharing Analysis and Visualization
+        print("\n8. Ride-Sharing Analysis and Visualization")
         try:
-            # Import ride-sharing modules
-            from ride_share_simulator import RideShareSimulator
             from ride_share_analyzer import RideShareAnalyzer
             
-            ride_simulator = RideShareSimulator()
             ride_analyzer = RideShareAnalyzer(spark)
             
             for city in ['delhi', 'bangalore']:
                 print(f"\nProcessing ride-sharing data for {city}...")
                 
-                # Generate ride data
-                print("Generating ride data...")
-                rides = ride_simulator.generate_ride_data(city, num_rides=2000)
-                
-                # Store in MongoDB
-                print("Storing in MongoDB...")
-                ride_simulator.store_ride_data(rides, city)
-                ride_simulator.create_ride_indexes(city)
-                print(f"Stored {len(rides)} ride records for {city}")
-                
-                # Load and preprocess ride data
+                # Load and preprocess ride data (already stored in Step 6)
                 print("Loading and preprocessing data...")
                 rides_df = ride_analyzer.load_ride_data(city)
                 if rides_df:
                     rides_clean = ride_analyzer.preprocess_ride_data(rides_df)
+                    print(f"Processed {rides_clean.count()} rides")
                     
                     # Analyze ride patterns
                     print("Analyzing ride patterns...")
@@ -291,6 +278,10 @@ def main():
                     ride_analyzer.create_comparison_visualizations(rides_clean, city)
                     
                     print(f"Completed ride-sharing analysis for {city}")
+                    
+                    pandas_df = rides_clean.limit(100).toPandas()
+                    if len(pandas_df) > 0:
+                        print(f"  Sample stats: Avg fare ₹{pandas_df['fare'].mean():.2f}, Avg surge {pandas_df['surge_multiplier'].mean():.2f}x")
                 else:
                     print(f"No ride data available for {city}")
                     
@@ -299,8 +290,8 @@ def main():
             import traceback
             traceback.print_exc()
 
-        # Step 8: Generate City Comparison
-        print("\n8. Generating City Comparison Analysis")
+        # Step 9: Generate City Comparison
+        print("\n9. Generating City Comparison Analysis")
         try:
             # Load data for both cities
             delhi_data = analysis_engine.load_analysis_data('delhi')
@@ -314,8 +305,8 @@ def main():
         except Exception as e:
             print(f"Error in city comparison: {e}")
 
-        # Step 9: Generate Summary Report
-        print("\n9. Generating Summary Report")
+        # Step 10: Generate Summary Report
+        print("\n10. Generating Summary Report")
         if all_analysis_results:
             report = generate_summary_report(all_analysis_results)
             print_executive_summary(report)
