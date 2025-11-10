@@ -1,0 +1,85 @@
+EDA Report - DELHI
+==================================================
+
+AGENCY ANALYSIS
+Records: 2
+Columns: 7
+Memory: 0.00 MB
+Duplicates: 0
+
+ MISSING VALUES:
+  agency_phone: 2 (100.0%)
+  agency_fare_url: 2 (100.0%)
+ No data quality issues
+
+------------------------------
+
+CALENDAR ANALYSIS
+Records: 1
+Columns: 10
+Memory: 0.00 MB
+Duplicates: 0
+
+ No missing values
+ No data quality issues
+
+------------------------------
+
+ROUTES ANALYSIS
+Records: 2,964
+Columns: 5
+Memory: 0.42 MB
+Duplicates: 0
+
+ MISSING VALUES:
+  route_short_name: 2,964 (100.0%)
+ DATA QUALITY ISSUES:
+  zero_values_route_id: 1
+
+------------------------------
+
+STOPS ANALYSIS
+Records: 6,342
+Columns: 6
+Memory: 0.98 MB
+Duplicates: 0
+
+ MISSING VALUES:
+  stop_code: 1,768 (27.9%)
+  zone_id: 1,786 (28.2%)
+ DATA QUALITY ISSUES:
+  zero_values_stop_id: 1
+  zero_values_zone_id: 1
+  outliers_stop_lat: 13
+  outliers_stop_lon: 12
+
+------------------------------
+
+STOP_TIMES ANALYSIS
+Records: 3,276,092
+Columns: 5
+Memory: 664.49 MB
+Duplicates: 0
+
+ No missing values
+ DATA QUALITY ISSUES:
+  zero_values_stop_id: 2,174
+  zero_values_stop_sequence: 78,507
+  outliers_stop_id: 286,184
+  outliers_stop_sequence: 23,490
+
+------------------------------
+
+TRIPS ANALYSIS
+Records: 78,515
+Columns: 4
+Memory: 6.79 MB
+Duplicates: 8
+
+ MISSING VALUES:
+  shape_id: 78,515 (100.0%)
+ DATA QUALITY ISSUES:
+  zero_values_route_id: 103
+
+------------------------------
+

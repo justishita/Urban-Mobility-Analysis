@@ -1,13 +1,17 @@
 {
   "project": "Urban Mobility Intelligence System",
-  "execution_time": "2025-11-10T12:28:19.916981",
+  "execution_time": "2025-11-10T17:30:50.783302",
   "cities_analyzed": [
     "delhi",
     "bangalore"
   ],
   "summary": {
     "delhi": {
-      "total_routes": 2964,
-      "avg_trips_per_route": 26.486842105263158,
-      "avg_stops_per_route": 39.80263157894737,
-      "total_stop_events": 
+      "overall_score": 0,
+      "key_strengths": [],
+      "improvement_areas": [
+        "Consider increasing service frequency",
+        "Improve headway consistency"
+      ],
+      "total_routes": 2125,
+      "total_trips_estimate": 

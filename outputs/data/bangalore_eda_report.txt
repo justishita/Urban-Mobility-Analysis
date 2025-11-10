@@ -1,0 +1,140 @@
+EDA Report - BANGALORE
+==================================================
+
+AGENCY ANALYSIS
+Records: 1
+Columns: 4
+Memory: 0.00 MB
+Duplicates: 0
+
+ No missing values
+ No data quality issues
+
+------------------------------
+
+CALENDAR ANALYSIS
+Records: 1
+Columns: 10
+Memory: 0.00 MB
+Duplicates: 0
+
+ No missing values
+ No data quality issues
+
+------------------------------
+
+FARE_ATTRIBUTES ANALYSIS
+Records: 60
+Columns: 7
+Memory: 0.01 MB
+Duplicates: 0
+
+ MISSING VALUES:
+  transfers: 60 (100.0%)
+ DATA QUALITY ISSUES:
+  zero_values_payment_method: 60
+  zero_values_transfer_duration: 60
+  outliers_price: 4
+
+------------------------------
+
+FARE_RULES ANALYSIS
+Records: 1,375,805
+Columns: 4
+Memory: 194.01 MB
+Duplicates: 0
+
+ No missing values
+ DATA QUALITY ISSUES:
+  outliers_origin_id: 162,368
+
+------------------------------
+
+FEED_INFO ANALYSIS
+Records: 1
+Columns: 8
+Memory: 0.00 MB
+Duplicates: 0
+
+ No missing values
+ No data quality issues
+
+------------------------------
+
+ROUTES ANALYSIS
+Records: 4,204
+Columns: 5
+Memory: 1.24 MB
+Duplicates: 0
+
+ No missing values
+ No data quality issues
+
+------------------------------
+
+SHAPES ANALYSIS
+Records: 2,145,756
+Columns: 5
+Memory: 207.87 MB
+Duplicates: 0
+
+ No missing values
+ DATA QUALITY ISSUES:
+  zero_values_shape_pt_sequence: 7,095
+  zero_values_shape_dist_traveled: 7,095
+  outliers_shape_pt_lat: 71,549
+  outliers_shape_pt_lon: 86,546
+  outliers_shape_pt_sequence: 44,365
+  outliers_shape_dist_traveled: 37,674
+
+------------------------------
+
+STOPS ANALYSIS
+Records: 9,402
+Columns: 5
+Memory: 0.96 MB
+Duplicates: 0
+
+ No missing values
+ DATA QUALITY ISSUES:
+  outliers_stop_lat: 49
+  outliers_stop_lon: 105
+
+------------------------------
+
+STOP_TIMES ANALYSIS
+Records: 1,484,864
+Columns: 6
+Memory: 326.13 MB
+Duplicates: 0
+
+ No missing values
+ DATA QUALITY ISSUES:
+  outliers_stop_id: 128,368
+  outliers_stop_sequence: 21,532
+
+------------------------------
+
+TRANSLATIONS ANALYSIS
+Records: 9,005
+Columns: 5
+Memory: 3.11 MB
+Duplicates: 0
+
+ No missing values
+ No data quality issues
+
+------------------------------
+
+TRIPS ANALYSIS
+Records: 55,388
+Columns: 6
+Memory: 12.23 MB
+Duplicates: 0
+
+ No missing values
+ DATA QUALITY ISSUES:
+  zero_values_direction_id: 28,405
+
+------------------------------
+

@@ -11,6 +11,7 @@ from spark_manager import SparkManager
 from mongodb_manager import MongoDBManager
 from spark_processor import SparkProcessor
 from analysis_engine import AnalysisEngine
+from eda_analyzer import EDAAnalyzer  # Add this import
 
 def generate_summary_report(analysis_results):
     """Generate a comprehensive summary report"""
@@ -137,8 +138,19 @@ def main():
         print("\n1. ⚙️  Initial Setup")
         Config.setup_directories()
         
-        # Step 2: Setup Spark
-        print("\n2. 🔥 Spark Setup")
+        # Step 2: EDA Analysis (NEW STEP)
+        print("\n2. 🔍 Exploratory Data Analysis")
+        eda_analyzer = EDAAnalyzer()
+        eda_results = []
+        
+        for city in ['delhi', 'bangalore']:
+            print(f"\n📊 Performing EDA for {city.upper()}...")
+            city_eda_results = eda_analyzer.analyze_city_data(city)
+            eda_results.append(city_eda_results)
+            print(f"✅ EDA completed for {city}")
+        
+        # Step 3: Setup Spark
+        print("\n3. 🔥 Spark Setup")
         spark = SparkManager.setup_spark()
         
         if spark is None:
@@ -146,8 +158,8 @@ def main():
             print("💡 Run: pip install pyspark findspark")
             return
         
-        # Step 3: MongoDB Setup and Data Import
-        print("\n3. 🗃️  MongoDB Setup and Data Import")
+        # Step 4: MongoDB Setup and Data Import
+        print("\n4. 🗃️  MongoDB Setup and Data Import")
         try:
             mongo_manager = MongoDBManager()
             
@@ -169,11 +181,9 @@ def main():
             SparkManager.stop_spark(spark)
             return
         
-        # Step 4: Spark Processing
-        print("\n4. 🔧 Spark Data Processing")
+        # Step 5: Spark Processing
+        print("\n5. 🔧 Spark Data Processing")
         spark_processor = SparkProcessor(spark)
-        
-        all_analysis_results = []
         
         for city in ['delhi', 'bangalore']:
             print(f"\n📍 Processing {city.upper()} with Spark...")
@@ -185,29 +195,50 @@ def main():
             else:
                 print(f"❌ Failed to process {city} data with Spark")
         
-        # Step 5: Analysis and Visualization
-        print("\n5. 📊 Data Analysis and Visualization")
+            # Step 6: Data Analysis and Visualization
+        print("\n6. 📊 Data Analysis and Visualization")
         analysis_engine = AnalysisEngine()
-        
+        all_analysis_results = []
+
         for city in ['delhi', 'bangalore']:
             print(f"\n🔍 Analyzing {city.upper()}...")
-            analysis_results = analysis_engine.perform_comprehensive_analysis(city)
             
-            if analysis_results:
-                all_analysis_results.append(analysis_results)
+            # Load data once
+            data = analysis_engine.load_analysis_data(city)
+            
+            if data:
+                # Perform basic analysis
+                analysis_results = analysis_engine.perform_comprehensive_analysis(city)
                 
-                # Load data for visualization
-                data = analysis_engine.load_analysis_data(city)
-                if data:
-                    analysis_engine.create_comprehensive_visualizations(city, data)
-                    print(f"✅ Completed analysis and visualization for {city}")
+                if analysis_results:
+                    all_analysis_results.append(analysis_results)
+                    
+                    # Create ALL visualizations
+                    analysis_engine.create_comprehensive_visualizations(city, data)  # Basic graphs
+                    analysis_engine.create_advanced_analysis(city, data)             # NEW: Advanced graphs
+                    print(f"✅ Completed ALL analysis for {city}")
                 else:
-                    print(f"⚠️  No data available for visualization in {city}")
+                    print(f"❌ Analysis failed for {city}")
             else:
-                print(f"❌ Analysis failed for {city}")
-        
-        # Step 6: Generate Summary Report
-        print("\n6. 📋 Generating Summary Report")
+                print(f"⚠️  No data available for analysis in {city}")
+
+        # Step 7: Generate City Comparison (Add this after individual city analysis)
+        print("\n7. 🌆 Generating City Comparison Analysis")
+        try:
+            # Load data for both cities
+            delhi_data = analysis_engine.load_analysis_data('delhi')
+            bangalore_data = analysis_engine.load_analysis_data('bangalore')
+            
+            if delhi_data and bangalore_data:
+                analysis_engine._plot_city_comparison(delhi_data, bangalore_data)
+                print("✅ City comparison analysis completed")
+            else:
+                print("⚠️  Cannot generate city comparison - missing data")
+        except Exception as e:
+            print(f"❌ Error in city comparison: {e}")
+
+        # Step 8: Generate Summary Report (renumber this step)
+        print("\n8. 📋 Generating Summary Report")
         if all_analysis_results:
             report = generate_summary_report(all_analysis_results)
             print_executive_summary(report)
