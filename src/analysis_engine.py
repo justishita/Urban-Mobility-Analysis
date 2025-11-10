@@ -26,11 +26,11 @@ class AnalysisEngine:
             if os.path.exists(file_path):
                 try:
                     loaded_data[name] = pd.read_csv(file_path)
-                    print(f"  📁 Loaded {name}: {len(loaded_data[name])} records")
+                    print(f"Loaded {name}: {len(loaded_data[name])} records")
                 except Exception as e:
-                    print(f"  ❌ Error loading {name}: {e}")
+                    print(f"  Error loading {name}: {e}")
             else:
-                print(f"  ⚠️  File not found: {file_path}")
+                print(f" File not found: {file_path}")
         
         return loaded_data
     
@@ -415,7 +415,7 @@ class AnalysisEngine:
         plt.tight_layout()
         plt.savefig(f'outputs/visuals/{city}_service_patterns.png', dpi=300, bbox_inches='tight')
         plt.close()
-        print(f"    ✅ Saved service patterns: outputs/visuals/{city}_service_patterns.png")
+        print(f"Saved service patterns: outputs/visuals/{city}_service_patterns.png")
     
     def _plot_spatial_analysis(self, city, spatial_stats):
         """Plot spatial analysis charts"""
@@ -444,7 +444,7 @@ class AnalysisEngine:
         plt.tight_layout()
         plt.savefig(f'outputs/visuals/{city}_spatial_analysis.png', dpi=300, bbox_inches='tight')
         plt.close()
-        print(f"    ✅ Saved spatial analysis: outputs/visuals/{city}_spatial_analysis.png")
+        print(f" Saved spatial analysis: outputs/visuals/{city}_spatial_analysis.png")
 
 
     def _plot_route_popularity_comparison(self, city, route_stats, trip_stop_events):
@@ -661,6 +661,44 @@ class AnalysisEngine:
         print(f"    Saved route analysis: outputs/visuals/{city}_route_analysis.png")
     
 
+        def _load_route_names_from_gtfs(self, city):
+            """Load route names from GTFS data"""
+            try:
+                from data_loader import DataLoader
+                routes_df = DataLoader.load_gtfs_file(city, 'routes')
+                
+                route_mapping = {}
+                for _, row in routes_df.iterrows():
+                    route_id = str(row.get('route_id', ''))
+                    route_long_name = row.get('route_long_name', '')
+                    route_short_name = row.get('route_short_name', '')
+                    
+                    if route_long_name and str(route_long_name) != 'nan':
+                        route_mapping[route_id] = str(route_long_name)
+                    elif route_short_name and str(route_short_name) != 'nan':
+                        route_mapping[route_id] = str(route_short_name)
+                    else:
+                        route_mapping[route_id] = f"Route {route_id}"
+                
+                return route_mapping
+            except Exception as e:
+                print(f"Error loading route names: {e}")
+                return {}
+
+        def _get_best_route_name(self, row):
+            """Get the best available route name from row data"""
+            route_long_name = row.get('route_long_name', '')
+            route_short_name = row.get('route_short_name', '')
+            route_id = str(row.get('route_id', ''))
+            
+            if route_long_name and str(route_long_name) != 'nan':
+                return str(route_long_name)
+            elif route_short_name and str(route_short_name) != 'nan':
+                return str(route_short_name)
+            else:
+                return f"Route {route_id}"
+    
+
     def create_advanced_analysis(self, city, data):
         """Create advanced analysis graphs"""
         try:
@@ -675,4 +713,10 @@ class AnalysisEngine:
             print(f"  ✅ Advanced analysis completed for {city}")
             
         except Exception as e:
-            print(f"  ❌ Error in advanced analysis: {e}")
+            print(f"  Error in advanced analysis: {e}")
+
+
+    def _get_best_route_name(self, row):
+        """Get the best available route name from row data"""
+        route_id = str(row.get('route_id', 'Unknown'))
+        return f"Route {route_id}"

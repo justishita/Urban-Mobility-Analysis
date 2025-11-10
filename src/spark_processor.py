@@ -16,17 +16,14 @@ class SparkProcessor:
         if pandas_df.empty:
             return None
         
-        # Clean column names for Spark
         pandas_df = self._clean_dataframe_columns(pandas_df)
         
         try:
-            # Let Spark infer schema first
             spark_df = self.spark.createDataFrame(pandas_df)
             return spark_df
             
         except Exception as e:
-            print(f"⚠️  Schema inference failed, using string schema: {e}")
-            # Fallback: create with string schema
+            print(f"Schema inference failed, using string schema: {e}")
             schema = StructType([StructField(col, StringType()) for col in pandas_df.columns])
             return self.spark.createDataFrame(pandas_df, schema)
     
@@ -37,15 +34,14 @@ class SparkProcessor:
     
     def process_city_data(self, city, mongo_manager):
         """Process GTFS data for a city using Spark"""
-        print(f"\n🔧 Processing {city} data with Spark...")
+        print(f"\n Processing {city} data with Spark...")
         
         # Load data from MongoDB collections
         collections_data = self._load_collections_from_mongodb(city, mongo_manager)
         
-        # Check if we have the essential data
         essential_collections = ['routes', 'trips', 'stop_times', 'stops']
         if not all(collections_data.get(col) for col in essential_collections):
-            print(f"❌ Missing essential data for {city}")
+            print(f" Missing essential data for {city}")
             return None
         
         # Process the data
@@ -53,7 +49,7 @@ class SparkProcessor:
             results = self.process_gtfs_data(collections_data, city)
             return results
         except Exception as e:
-            print(f"❌ Error processing {city} data: {e}")
+            print(f"Error processing {city} data: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -72,13 +68,13 @@ class SparkProcessor:
                 if not pandas_df.empty:
                     spark_df = self.pandas_to_spark_with_schema(pandas_df)
                     collections_data[file_type] = spark_df
-                    print(f"  ✅ Loaded {file_type}: {pandas_df.shape[0]} records")
+                    print(f" Loaded {file_type}: {pandas_df.shape[0]} records")
                 else:
-                    print(f"  ⚠️  No data found for {file_type}")
+                    print(f" No data found for {file_type}")
                     collections_data[file_type] = None
                     
             except Exception as e:
-                print(f"  ❌ Error loading {file_type}: {e}")
+                print(f"Error loading {file_type}: {e}")
                 collections_data[file_type] = None
         
         return collections_data
@@ -90,7 +86,7 @@ class SparkProcessor:
         stop_times = collections_data['stop_times']
         stops = collections_data['stops']
         
-        print("  🧹 Cleaning and transforming data...")
+        print(" Cleaning and transforming data...")
         
         # Basic data cleaning
         routes_clean = self._clean_routes_data(routes)
@@ -98,7 +94,7 @@ class SparkProcessor:
         stops_clean = self._clean_stops_data(stops)
         stop_times_clean = self._clean_stop_times_data(stop_times)
         
-        print("  🔗 Joining datasets...")
+        print(" Joining datasets...")
         
         # Create comprehensive trip-stop events
         trip_stop_events = self._create_trip_stop_events(
@@ -106,16 +102,16 @@ class SparkProcessor:
         )
         
         # Calculate various metrics
-        print("  📊 Calculating route statistics...")
+        print("Calculating route statistics...")
         route_stats = self._calculate_route_statistics(trip_stop_events)
         
-        print("  ⏱️  Calculating headways...")
+        print(" Calculating headways...")
         headways = self._calculate_headways(trip_stop_events)
         
-        print("  🕒 Calculating service frequency...")
+        print("Calculating service frequency...")
         hourly_service = self._calculate_hourly_service(trip_stop_events)
         
-        print("  📈 Calculating spatial statistics...")
+        print(" Calculating spatial statistics...")
         spatial_stats = self._calculate_spatial_statistics(trip_stop_events)
         
         return {
@@ -218,7 +214,7 @@ class SparkProcessor:
         if not results:
             return
         
-        print(f"  💾 Saving {city} results...")
+        print(f"Saving {city} results...")
         
         for result_name, spark_df in results.items():
             try:
@@ -228,13 +224,13 @@ class SparkProcessor:
                 # Save to CSV
                 output_path = f"outputs/data/{city}_{result_name}.csv"
                 pandas_df.to_csv(output_path, index=False)
-                print(f"    ✅ CSV: {output_path} ({len(pandas_df)} records)")
+                print(f"CSV: {output_path} ({len(pandas_df)} records)")
                 
                 # Save to MongoDB
                 self._save_to_mongodb(pandas_df, f"{city}_analytics_{result_name}")
                 
             except Exception as e:
-                print(f"    ❌ Error saving {result_name}: {e}")
+                print(f" Error saving {result_name}: {e}")
     
     def _save_to_mongodb(self, pandas_df, collection_name):
         """Save DataFrame to MongoDB"""
@@ -250,10 +246,10 @@ class SparkProcessor:
             if not pandas_df.empty:
                 records = pandas_df.to_dict('records')
                 collection.insert_many(records)
-                print(f"    ✅ MongoDB: {collection_name} ({len(records)} records)")
+                print(f"MongoDB: {collection_name} ({len(records)} records)")
                 
         except Exception as e:
-            print(f"    ❌ MongoDB save error for {collection_name}: {e}")
+            print(f"MongoDB save error for {collection_name}: {e}")
         finally:
             if 'client' in locals():
                 client.close()

@@ -22,9 +22,9 @@ class MongoDBManager:
         try:
             self.client = MongoClient(
                 self.config.MONGO_URI,
-                serverSelectionTimeoutMS=5000,
-                connectTimeoutMS=5000,
-                socketTimeoutMS=5000
+                serverSelectionTimeoutMS=30000,
+                connectTimeoutMS=30000,
+                socketTimeoutMS=30000
             )
             
             # Test connection
