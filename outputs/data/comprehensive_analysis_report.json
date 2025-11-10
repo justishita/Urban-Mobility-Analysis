@@ -1,0 +1,13 @@
+{
+  "project": "Urban Mobility Intelligence System",
+  "execution_time": "2025-11-10T12:28:19.916981",
+  "cities_analyzed": [
+    "delhi",
+    "bangalore"
+  ],
+  "summary": {
+    "delhi": {
+      "total_routes": 2964,
+      "avg_trips_per_route": 26.486842105263158,
+      "avg_stops_per_route": 39.80263157894737,
+      "total_stop_events": 
