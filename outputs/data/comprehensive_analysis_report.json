@@ -1,6 +1,6 @@
 {
   "project": "Urban Mobility Intelligence System",
-  "execution_time": "2025-11-10T22:56:04.870287",
+  "execution_time": "2025-11-10T23:37:55.152916",
   "cities_analyzed": [
     "delhi",
     "bangalore"
@@ -13,5 +13,5 @@
         "Consider increasing service frequency",
         "Improve headway consistency"
       ],
-      "total_routes": 189,
+      "total_routes": 2964,
       "total_trips_estimate": 

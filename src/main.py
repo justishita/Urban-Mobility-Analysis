@@ -1,10 +1,10 @@
 """
 Main pipeline orchestration for Urban Mobility Intelligence System
 """
-
 import sys
 import os
 import json
+from pymongo import MongoClient
 from datetime import datetime
 from config import Config
 from spark_manager import SparkManager
@@ -12,325 +12,244 @@ from mongodb_manager import MongoDBManager
 from spark_processor import SparkProcessor
 from analysis_engine import AnalysisEngine
 from eda_analyzer import EDAAnalyzer
+import pandas as pd
+import numpy as np
+import traceback
+from spark_manager import SparkManager
 
-def generate_summary_report(analysis_results):
-    """Generate a comprehensive summary report"""
-    report = {
-        "project": "Urban Mobility Intelligence System",
-        "execution_time": datetime.now().isoformat(),
-        "cities_analyzed": [],
-        "summary": {},
-        "key_findings": [],
-        "recommendations": []
-    }
-    
-    for result in analysis_results:
-        city = result['city']
-        report["cities_analyzed"].append(city)
-        
-        if 'summary' in result:
-            report["summary"][city] = result['summary']
-            
-            # Add key findings
-            findings = []
-            
-            if 'route_analysis' in result:
-                ra = result['route_analysis']
-                findings.extend([
-                    f"{city.title()} has {ra['total_routes']} bus routes",
-                    f"Average {ra['avg_trips_per_route']:.1f} trips per route",
-                    f"Total {ra['total_stop_events']:,} stop events recorded",
-                    f"Busiest route: {ra['busiest_route']['route_id']} with {ra['busiest_route']['trips']} trips"
-                ])
-            
-            if 'headway_analysis' in result:
-                ha = result['headway_analysis']
-                findings.extend([
-                    f"Average headway: {ha['avg_headway_min']:.1f} minutes",
-                    f"On-time performance: {ha['reliability_metrics']['on_time_percentage']:.1f}%",
-                    f"High-frequency coverage: {ha['reliability_metrics']['high_frequency_percentage']:.1f}%"
-                ])
-            
-            if 'service_analysis' in result:
-                sa = result['service_analysis']
-                findings.extend([
-                    f"Peak service hour: {sa['peak_hour']}:00",
-                    f"Service gaps: {len(sa['service_gaps'])} hours in 24-hour cycle"
-                ])
-            
-            report["key_findings"].extend(findings)
-            
-            # Generate recommendations
-            recommendations = generate_recommendations(result)
-            report["recommendations"].extend(recommendations)
-    
-    # Save report
-    with open('outputs/data/comprehensive_analysis_report.json', 'w') as f:
-        json.dump(report, f, indent=2)
-    
-    print("Comprehensive report generated: outputs/data/comprehensive_analysis_report.json")
-    return report
-
-def generate_recommendations(analysis_result):
-    """Generate recommendations based on analysis findings"""
-    recommendations = []
-    city = analysis_result['city']
-    
-    if 'headway_analysis' in analysis_result:
-        ha = analysis_result['headway_analysis']
-        if ha['avg_headway_min'] > 15:
-            recommendations.append(
-                f"Consider increasing frequency on key routes in {city} to reduce average headway"
-            )
-    
-    if 'service_analysis' in analysis_result:
-        sa = analysis_result['service_analysis']
-        if len(sa['service_gaps']) > 6:
-            recommendations.append(
-                f"Address service gaps in {city}, particularly during {sa['service_gaps']}"
-            )
-    
-    if 'route_analysis' in analysis_result:
-        ra = analysis_result['route_analysis']
-        if ra['route_distribution']['low_frequency'] > ra['route_distribution']['high_frequency']:
-            recommendations.append(
-                f"Optimize route frequencies in {city} - too many low-frequency routes"
-            )
-    
-    return recommendations
 
 def print_executive_summary(report):
-    """Print executive summary to console"""
+    """Print executive summary to console (safe access)"""
     print("\n" + "="*60)
     print(" EXECUTIVE SUMMARY")
     print("="*60)
-    
-    print(f"\n Cities Analyzed: {', '.join(report['cities_analyzed'])}")
-    print(f"Analysis Date: {report['execution_time']}")
-    
-    print(f"\n KEY FINDINGS:")
-    for finding in report['key_findings']:
-        print(f"   • {finding}")
-    
-    if report['recommendations']:
-        print(f"\n RECOMMENDATIONS:")
-        for recommendation in report['recommendations']:
-            print(f"   • {recommendation}")
-    
-    print(f"\n Overall Assessment:")
-    total_routes = sum(len(report['summary'][city].get('total_routes', 0)) 
-                      for city in report['cities_analyzed'] 
-                      if 'total_routes' in report['summary'][city])
-    print(f" Total routes analyzed: {total_routes}")
-    print(f" Cities with good coverage: {len(report['cities_analyzed'])}")
-    print(f" Recommendations provided: {len(report['recommendations'])}")
+    try:
+        cities = report.get('cities_analyzed', ['delhi', 'bangalore'])
+        print(f"\n Cities Analyzed: {', '.join(cities)}")
+        print(f"Analysis Date: {report.get('execution_time', 'N/A')}")
+        print("\n KEY FINDINGS:")
+        for finding in report.get('key_findings', []):
+            print(f"   • {finding}")
+        if report.get('recommendations'):
+            print("\n RECOMMENDATIONS:")
+            for r in report['recommendations']:
+                print(f"   • {r}")
+        summary = report.get('summary', {})
+        total_routes = sum(summary.get(c, {}).get('total_routes', 0) for c in cities)
+        print(f"\n Total routes analyzed: {total_routes}")
+        print(f" Cities with good coverage: {len(cities)}")
+        print(f" Recommendations provided: {len(report.get('recommendations', []))}")
+    except Exception as e:
+        print(f"Error printing executive summary: {e}")
+        traceback.print_exc()
+    print("\n" + "="*60)
 
 def main():
     """Main execution function"""
     print("Starting Urban Mobility Pipeline")
     print("=" * 60)
-    
-    # Track execution time
     start_time = datetime.now()
-    
+    spark = None
+    mongo_manager = None
+
     try:
         # Step 1: Setup Directories and Configuration
         print("\n1. Initial Setup")
         Config.setup_directories()
-        
+
         # Step 2: EDA Analysis
-        print("\n2.Exploratory Data Analysis")
+        print("\n2. Exploratory Data Analysis")
         eda_analyzer = EDAAnalyzer()
         eda_results = []
-        
         for city in ['delhi', 'bangalore']:
-            print(f"\ Performing EDA for {city.upper()}...")
-            city_eda_results = eda_analyzer.analyze_city_data(city)
-            eda_results.append(city_eda_results)
-            print(f" EDA completed for {city}")
-        
+            print(f"Performing EDA for {city.upper()}...")
+            try:
+                city_eda_results = eda_analyzer.analyze_city_data(city)
+                eda_results.append(city_eda_results)
+                print(f"EDA completed for {city}")
+            except Exception as e:
+                print(f"EDA failed for {city}: {e}")
+
         # Step 3: Setup Spark
         print("\n3. Spark Setup")
         spark = SparkManager.setup_spark()
-        
         if spark is None:
-            print(" Spark setup failed. Please install Spark dependencies.")
-            print("Run: pip install pyspark findspark")
+            print("Spark setup failed. Please install Spark dependencies (pyspark, findspark).")
             return
-        
+
         # Step 4: MongoDB Setup and Data Import
         print("\n4. MongoDB Setup and Data Import")
         try:
             mongo_manager = MongoDBManager()
-            
-            # Import data for each city
             for city in ['delhi', 'bangalore']:
                 print(f"\nProcessing {city.upper()}...")
-                success = mongo_manager.import_city_data(city)
-                if success:
-                    print(f" Successfully imported {city} data to MongoDB")
-                else:
-                    print(f"Failed to import {city} data")
-            
-            # Show database statistics
+                try:
+                    success = mongo_manager.import_city_data(city)
+                    if success:
+                        print(f" Successfully imported {city} data to MongoDB")
+                    else:
+                        print(f" Failed to import {city} data (check logs)")
+                except Exception as e:
+                    print(f" Error importing {city}: {e}")
             print("\n" + "="*50)
             mongo_manager.get_database_stats()
-            
         except Exception as e:
             print(f" MongoDB operations failed: {e}")
-            SparkManager.stop_spark(spark)
+            traceback.print_exc()
+            if spark:
+                SparkManager.stop_spark(spark)
             return
-        
+
         # Step 5: Spark Processing
         print("\n5. Spark Data Processing")
         spark_processor = SparkProcessor(spark)
-        
         for city in ['delhi', 'bangalore']:
             print(f"\nProcessing {city.upper()} with Spark...")
-            results = spark_processor.process_city_data(city, mongo_manager)
-            
-            if results:
-                spark_processor.save_spark_results(results, city)
-                print(f" Successfully processed {city} data")
-            else:
-                print(f" Failed to process {city} data with Spark")
+            try:
+                results = spark_processor.process_city_data(city, mongo_manager)
+                if results:
+                    spark_processor.save_spark_results(results, city)
+                    print(f" Successfully processed {city} data")
+                else:
+                    print(f" Failed to process {city} data with Spark")
+            except Exception as e:
+                print(f" Spark processing failed for {city}: {e}")
+                traceback.print_exc()
 
         # Step 6: Ride-Sharing Data Collection
         print("\n6. Ride-Sharing Data Collection")
         try:
             from ride_share_simulator import RideShareSimulator
-            
             ride_simulator = RideShareSimulator()
-            
             for city in ['delhi', 'bangalore']:
                 print(f"Generating ride data for {city}...")
-                
-                # Generate ride data
                 rides = ride_simulator.generate_ride_data(city, num_rides=1000)
                 print(f"Generated {len(rides)} ride records for {city}")
-                
-                # Store in MongoDB
                 success = ride_simulator.store_ride_data(rides, city)
                 if success:
                     ride_simulator.create_ride_indexes(city)
                     print(f"Successfully stored ride data for {city}")
                 else:
                     print(f"Failed to store ride data for {city}")
-                    
         except Exception as e:
             print(f"Ride-sharing data collection failed: {e}")
-            import traceback
             traceback.print_exc()
 
         # Step 7: Data Analysis and Visualization
         print("\n7. Data Analysis and Visualization")
         analysis_engine = AnalysisEngine()
         all_analysis_results = []
-
         for city in ['delhi', 'bangalore']:
             print(f"\nAnalyzing {city.upper()}...")
-            
-            # Load data once
             data = analysis_engine.load_analysis_data(city)
-            
             if data:
-                # Perform basic analysis
-                analysis_results = analysis_engine.perform_comprehensive_analysis(city)
-                
-                if analysis_results:
-                    all_analysis_results.append(analysis_results)
-                    
-                    # Create ALL visualizations
-                    analysis_engine.create_comprehensive_visualizations(city, data)  # Basic graphs
-                    analysis_engine.create_advanced_analysis(city, data)             # Advanced graphs
-                    print(f"Completed ALL analysis for {city}")
-                else:
-                    print(f"Analysis failed for {city}")
+                try:
+                    analysis_results = analysis_engine.perform_comprehensive_analysis(city)
+                    if analysis_results:
+                        all_analysis_results.append(analysis_results)
+                        analysis_engine.create_comprehensive_visualizations(city, data)
+                        analysis_engine.create_advanced_analysis(city, data)
+                        print(f"Completed ALL analysis for {city}")
+                    else:
+                        print(f"Analysis failed for {city}")
+                except Exception as e:
+                    print(f" Analysis failed for {city}: {e}")
+                    traceback.print_exc()
             else:
                 print(f"No data available for analysis in {city}")
 
-        # Step 8: Ride-Sharing Analysis and Visualization
-        print("\n8. Ride-Sharing Analysis and Visualization")
+        # Step 8: Ride-Sharing Data Check
+        print("\n8. Ride-Sharing Data Check (no visualizations here)")
         try:
-            from ride_share_analyzer import RideShareAnalyzer
-            
-            ride_analyzer = RideShareAnalyzer(spark)
-            
             for city in ['delhi', 'bangalore']:
-                print(f"\nProcessing ride-sharing data for {city}...")
-                
-                # Load and preprocess ride data (already stored in Step 6)
-                print("Loading and preprocessing data...")
-                rides_df = ride_analyzer.load_ride_data(city)
-                if rides_df:
-                    rides_clean = ride_analyzer.preprocess_ride_data(rides_df)
-                    print(f"Processed {rides_clean.count()} rides")
-                    
-                    # Analyze ride patterns
-                    print("Analyzing ride patterns...")
-                    ride_analysis = ride_analyzer.analyze_ride_patterns(rides_clean)
-                    surge_analysis = ride_analyzer.analyze_surge_patterns(rides_clean)
-                    
-                    # Create visualizations
-                    print("Creating visualizations...")
-                    ride_analyzer.create_ride_visualizations(ride_analysis, city)
-                    ride_analyzer.create_surge_visualizations(surge_analysis, city)
-                    ride_analyzer.create_comparison_visualizations(rides_clean, city)
-                    
-                    print(f"Completed ride-sharing analysis for {city}")
-                    
-                    pandas_df = rides_clean.limit(100).toPandas()
-                    if len(pandas_df) > 0:
-                        print(f"  Sample stats: Avg fare ₹{pandas_df['fare'].mean():.2f}, Avg surge {pandas_df['surge_multiplier'].mean():.2f}x")
-                else:
-                    print(f"No ride data available for {city}")
-                    
+                collection_name = f"{city}_rides"
+                client = MongoClient(Config().MONGO_URI, serverSelectionTimeoutMS=5000)
+                db = client[Config().DATABASE_NAME]
+                count = db[collection_name].count_documents({})
+                client.close()
+                print(f"  {city}: {count} ride records available for modeling")
         except Exception as e:
-            print(f"Ride-sharing analysis failed: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"Ride-sharing check note: {e}")
 
-        # Step 9: Generate City Comparison
+        # Step 9: City Comparison
         print("\n9. Generating City Comparison Analysis")
         try:
-            # Load data for both cities
-            delhi_data = analysis_engine.load_analysis_data('delhi')
-            bangalore_data = analysis_engine.load_analysis_data('bangalore')
-            
-            if delhi_data and bangalore_data:
-                analysis_engine._plot_city_comparison(delhi_data, bangalore_data)
+            from city_comparison_engine import CityComparisonEngine
+            comparison_engine = CityComparisonEngine(spark)
+            comparison_result = comparison_engine.generate_comparison_analysis()
+            if comparison_result:
                 print("City comparison analysis completed")
             else:
-                print("Cannot generate city comparison - missing data")
+                print("City comparison completed with limited data")
         except Exception as e:
             print(f"Error in city comparison: {e}")
+            traceback.print_exc()
 
-        # Step 10: Generate Summary Report
-        print("\n10. Generating Summary Report")
-        if all_analysis_results:
-            report = generate_summary_report(all_analysis_results)
-            print_executive_summary(report)
-        else:
-            print("No analysis results to report")
-        
-        # Calculate execution time
+        # Step 10: Predictive Modeling & Machine Learning
+        print("\n10. Predictive Modeling & Machine Learning")
+        try:
+            from feature_engineer import FeatureEngineer
+            from model_builder import ModelBuilder
+            from model_analyzer import ModelAnalyzer
+
+            feature_engineer = FeatureEngineer(spark)
+            model_builder = ModelBuilder(spark)
+            model_analyzer = ModelAnalyzer(spark)
+
+            modeling_df = feature_engineer.create_modeling_dataset()
+            if modeling_df is None:
+                print("DEBUG: modeling_df is None -> attempt simple fallback dataset")
+                modeling_df = feature_engineer.create_simple_modeling_dataset()
+
+            if modeling_df is None:
+                print("No modeling data available; skipping ML.")
+            else:
+                print(f"DEBUG: Features created: {modeling_df.count()} records")
+                modeling_df.show(5, truncate=False)
+
+                for problem_type in ['regression', 'classification']:
+                    print(f"\nTraining {problem_type.upper()} models...")
+                    processed_df, feature_model, feature_cols = feature_engineer.prepare_features_for_ml(
+                        modeling_df, problem_type
+                    )
+                    if processed_df and processed_df.count() > 0:
+                        train_df, test_df = model_builder.split_data(processed_df)
+                        models = model_builder.train_models(train_df, problem_type)
+                        if models:
+                            results = model_builder.evaluate_models(models, test_df, problem_type)
+                            print(f"\n{problem_type.upper()} MODEL RESULTS:")
+                            for model_name, metrics in results.items():
+                                print(f"  {model_name}: {metrics}")
+                            model_builder.save_models(models, problem_type)
+                            model_builder.create_model_comparison(results, problem_type)
+                            importance_results = model_analyzer.analyze_feature_importance(models, feature_cols, problem_type)
+                            insights = model_analyzer.generate_insights(modeling_df, importance_results, problem_type)
+                            print(f"{problem_type.upper()} modeling completed successfully!")
+                        else:
+                            print(f"No models trained for {problem_type}")
+                    else:
+                        print(f"Could not process features for {problem_type}")
+        except Exception as e:
+            print(f"Predictive modeling failed: {e}")
+            traceback.print_exc()
+
+        # Execution time
         execution_time = datetime.now() - start_time
-        print(f"\n Total execution time: {execution_time}")
-        
-        print("\n Pipeline completed successfully!")
-        print(" Check the 'outputs/' folder for results and visualizations")
-        
+        print(f"\nTotal execution time: {execution_time}")
+        print("\nPipeline completed! Check outputs/ for results and visuals")
+
     except Exception as e:
-        print(f" Pipeline execution failed: {e}")
-        import traceback
+        print(f"Pipeline execution failed: {e}")
         traceback.print_exc()
-    
+
     finally:
-        # Clean up resources
-        if 'spark' in locals():
+        if spark:
             SparkManager.stop_spark(spark)
-        if 'mongo_manager' in locals():
-            mongo_manager.close_connection()
+        if mongo_manager:
+            try:
+                mongo_manager.close_connection()
+            except Exception:
+                pass
 
 if __name__ == "__main__":
     main()

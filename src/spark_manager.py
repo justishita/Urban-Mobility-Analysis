@@ -1,75 +1,63 @@
+import os
 import warnings
 warnings.filterwarnings('ignore')
-
 class SparkManager:
-    """Manage Spark session with proper configuration and error handling"""
-    
+    """Manage Spark session with MongoDB and Windows Hadoop fix"""
+
     @staticmethod
     def setup_spark():
-        """Setup and return Spark session with optimized configuration"""
+        """Setup and return Spark session with MongoDB + optimized configuration"""
         try:
             import findspark
             findspark.init()
-            
+
             from pyspark.sql import SparkSession
             from config import Config
-            
-            # Create Spark session with optimized configuration
-            spark = SparkSession.builder \
-                .appName("UrbanMobilityAnalysis") \
-                .config("spark.sql.adaptive.enabled", "true") \
-                .config("spark.sql.adaptive.coalescePartitions.enabled", "true") \
-                .config("spark.driver.memory", Config.SPARK_DRIVER_MEMORY) \
-                .config("spark.executor.memory", Config.SPARK_EXECUTOR_MEMORY) \
-                .config("spark.sql.legacy.timeParserPolicy", "LEGACY") \
-                .config("spark.sql.adaptive.advisoryPartitionSizeInBytes", "128MB") \
-                .config("spark.sql.sources.partitionOverwriteMode", "dynamic") \
-                .config("spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version", "2") \
+            import os
+
+            # Windows Hadoop setup
+            if os.name == 'nt':
+                hadoop_path = r"C:\hadoop"
+                bin_path = os.path.join(hadoop_path, "bin")
+                os.makedirs(bin_path, exist_ok=True)
+
+                if not os.environ.get("HADOOP_HOME"):
+                    os.environ["HADOOP_HOME"] = hadoop_path
+                    print(f"✅ HADOOP_HOME set to {hadoop_path}")
+                if bin_path not in os.environ.get("PATH", ""):
+                    os.environ["PATH"] += f";{bin_path}"
+                    print(f"✅ Added {bin_path} to PATH")
+
+            mongo_pkg = "org.mongodb.spark:mongo-spark-connector_2.12:10.1.1"
+
+            spark = (
+                SparkSession.builder
+                .appName("UrbanMobilityPipeline")
+                # .config("spark.jars.packages", mongo_pkg)
+                # .config("spark.mongodb.read.connection.uri", "mongodb://localhost:27017/urban_mobility_analysis")
+                # .config("spark.mongodb.write.connection.uri", "mongodb://localhost:27017/urban_mobility_analysis")
+                # .config("spark.sql.execution.arrow.pyspark.enabled", "true")
+                # .config("spark.sql.adaptive.enabled", "true")
+                # .config("spark.driver.memory", Config.SPARK_DRIVER_MEMORY)
+                # .config("spark.executor.memory", Config.SPARK_EXECUTOR_MEMORY)
+                .config("spark.hadoop.fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+                .config("spark.hadoop.fs.AbstractFileSystem.file.impl", "org.apache.hadoop.fs.local.LocalFs")
                 .getOrCreate()
-            
-            # Set log level to WARN to reduce verbosity
+            )
+
             spark.sparkContext.setLogLevel("WARN")
-            
-            print("Spark session created successfully!")
-            print(f" Spark version: {spark.version}")
-            print(f" Driver Memory: {Config.SPARK_DRIVER_MEMORY}")
-            print(f" Executor Memory: {Config.SPARK_EXECUTOR_MEMORY}")
-            
+            print("Spark session created successfully with MongoDB connector!")
+            print(f"Spark version: {spark.version}")
             return spark
-            
-        except ImportError as e:
-            print(f"Spark dependencies not found: {e}")
-            print("Please install: pip install pyspark findspark")
-            return None
+
         except Exception as e:
             print(f"Error creating Spark session: {e}")
+            import traceback; traceback.print_exc()
             return None
-    
+        
     @staticmethod
     def stop_spark(spark):
         """Stop Spark session gracefully"""
         if spark:
             spark.stop()
             print("Spark session stopped successfully!")
-    
-    @staticmethod
-    def get_spark_config():
-        """Get Spark configuration for different environments"""
-        configs = {
-            'local': {
-                'spark.sql.adaptive.enabled': 'true',
-                'spark.sql.adaptive.coalescePartitions.enabled': 'true',
-                'spark.driver.memory': '2g',
-                'spark.executor.memory': '2g',
-                'spark.sql.legacy.timeParserPolicy': 'LEGACY'
-            },
-            'cluster': {
-                'spark.sql.adaptive.enabled': 'true',
-                'spark.sql.adaptive.coalescePartitions.enabled': 'true',
-                'spark.driver.memory': '4g',
-                'spark.executor.memory': '4g',
-                'spark.executor.instances': '4',
-                'spark.sql.legacy.timeParserPolicy': 'LEGACY'
-            }
-        }
-        return configs

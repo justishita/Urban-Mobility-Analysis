@@ -158,3 +158,25 @@ class DataLoader:
                 return False
         
         return True
+    
+    @staticmethod
+    def load_large_file_with_chunking(city, file_type, chunk_size=50000):
+        """Load large GTFS files with chunking to avoid MongoDB timeouts"""
+        file_path = os.path.join(Config.get_city_data_path(city), f"{file_type}.txt")
+        
+        try:
+            # Read the entire file first to get info
+            df_full = pd.read_csv(file_path, encoding='utf-8')
+            total_records = len(df_full)
+            print(f"{file_type}: {total_records} records, will load in chunks")
+            
+            # Return the full DataFrame but warn about size
+            if total_records > 100000:
+                print(f"⚠️  Large file detected: {file_type} has {total_records} records")
+                print(f"   Consider chunking for MongoDB import")
+            
+            return df_full
+            
+        except Exception as e:
+            print(f"Error loading {file_type}: {e}")
+            return pd.DataFrame()

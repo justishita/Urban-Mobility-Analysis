@@ -728,3 +728,120 @@ class AnalysisEngine:
             return f"Route {route_id}"
         except:
             return "Unknown Route"
+        
+    def _plot_city_comparison(self, delhi_data, bangalore_data):
+        """Create city comparison visualizations"""
+        try:
+            import matplotlib.pyplot as plt
+            import numpy as np
+            
+            print("Creating city comparison analysis...")
+            
+            # Compare route statistics
+            delhi_routes = len(delhi_data['route_stats']) if 'route_stats' in delhi_data else 0
+            bangalore_routes = len(bangalore_data['route_stats']) if 'route_stats' in bangalore_data else 0
+            
+            # Compare headways
+            if 'headways' in delhi_data and 'headway_seconds' in delhi_data['headways'].columns:
+                delhi_avg_headway = delhi_data['headways'].select(mean('headway_seconds')).collect()[0][0] / 60
+            else:
+                delhi_avg_headway = 0
+                
+            if 'headways' in bangalore_data and 'headway_seconds' in bangalore_data['headways'].columns:
+                bangalore_avg_headway = bangalore_data['headways'].select(mean('headway_seconds')).collect()[0][0] / 60
+            else:
+                bangalore_avg_headway = 0
+            
+            # Create comparison plots
+            fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+            fig.suptitle('City Comparison: Delhi vs Bangalore', fontsize=16, fontweight='bold')
+            
+            # Route count comparison
+            cities = ['Delhi', 'Bangalore']
+            route_counts = [delhi_routes, bangalore_routes]
+            
+            bars = axes[0,0].bar(cities, route_counts, color=['blue', 'orange'], alpha=0.7)
+            axes[0,0].set_title('Number of Bus Routes')
+            axes[0,0].set_ylabel('Routes')
+            for bar, count in zip(bars, route_counts):
+                axes[0,0].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 10, 
+                            f'{count:,}', ha='center', va='bottom', fontweight='bold')
+            
+            # Headway comparison
+            headways = [delhi_avg_headway, bangalore_avg_headway]
+            bars = axes[0,1].bar(cities, headways, color=['red', 'green'], alpha=0.7)
+            axes[0,1].set_title('Average Headway (minutes)')
+            axes[0,1].set_ylabel('Minutes')
+            for bar, headway in zip(bars, headways):
+                axes[0,1].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5, 
+                            f'{headway:.1f}', ha='center', va='bottom', fontweight='bold')
+            
+            # Service coverage comparison
+            if 'spatial_stats' in delhi_data:
+                delhi_stops = delhi_data['spatial_stats'].count()
+            else:
+                delhi_stops = 0
+                
+            if 'spatial_stats' in bangalore_data:
+                bangalore_stops = bangalore_data['spatial_stats'].count()
+            else:
+                bangalore_stops = 0
+                
+            stops = [delhi_stops, bangalore_stops]
+            bars = axes[1,0].bar(cities, stops, color=['purple', 'brown'], alpha=0.7)
+            axes[1,0].set_title('Number of Bus Stops')
+            axes[1,0].set_ylabel('Stops')
+            for bar, stop_count in zip(bars, stops):
+                axes[1,0].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 10, 
+                            f'{stop_count:,}', ha='center', va='bottom', fontweight='bold')
+            
+            # Service frequency comparison
+            if 'hourly_service' in delhi_data:
+                delhi_peak = delhi_data['hourly_service'].groupBy().max('hourly_trips').collect()[0][0] or 0
+            else:
+                delhi_peak = 0
+                
+            if 'hourly_service' in bangalore_data:
+                bangalore_peak = bangalore_data['hourly_service'].groupBy().max('hourly_trips').collect()[0][0] or 0
+            else:
+                bangalore_peak = 0
+                
+            peak_trips = [delhi_peak, bangalore_peak]
+            bars = axes[1,1].bar(cities, peak_trips, color=['teal', 'pink'], alpha=0.7)
+            axes[1,1].set_title('Peak Hour Trips')
+            axes[1,1].set_ylabel('Trips')
+            for bar, trips in zip(bars, peak_trips):
+                axes[1,1].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 10, 
+                            f'{trips:,}', ha='center', va='bottom', fontweight='bold')
+            
+            plt.tight_layout()
+            plt.savefig('outputs/visuals/city_comparison.png', dpi=300, bbox_inches='tight')
+            plt.close()
+            
+            print("✅ City comparison analysis completed: outputs/visuals/city_comparison.png")
+            
+        except Exception as e:
+            print(f"❌ Error in city comparison: {e}")
+def create_city_comparison(delhi_data, bangalore_data):
+    """Create comparison between cities"""
+    try:
+        # Ensure we're working with Spark DataFrames
+        if hasattr(delhi_data, 'select'):  # Spark DataFrame
+            # Your Spark operations here
+            delhi_count = delhi_data.count()
+            bangalore_count = bangalore_data.count()
+        else:  # Pandas DataFrame
+            # Convert or handle pandas operations
+            delhi_count = len(delhi_data)
+            bangalore_count = len(bangalore_data)
+            
+        comparison = {
+            'delhi_records': delhi_count,
+            'bangalore_records': bangalore_count,
+            # Add more comparison metrics
+        }
+        return comparison
+        
+    except Exception as e:
+        print(f"Comparison error: {e}")
+        return None

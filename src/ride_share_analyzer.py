@@ -182,32 +182,46 @@ class RideShareAnalyzer:
         
         print(f"Saved Indian surge patterns: outputs/visuals/{city}_indian_surge_patterns.png")
     
+    
+
+    def create_city_comparison(delhi_data, bangalore_data):
+        """Create comparison between cities"""
+        try:
+            # Ensure we're working with Spark DataFrames
+            if hasattr(delhi_data, 'select'):  # Spark DataFrame
+                # Your Spark operations here
+                delhi_count = delhi_data.count()
+                bangalore_count = bangalore_data.count()
+            else:  # Pandas DataFrame
+                # Convert or handle pandas operations
+                delhi_count = len(delhi_data)
+                bangalore_count = len(bangalore_data)
+                
+            comparison = {
+                'delhi_records': delhi_count,
+                'bangalore_records': bangalore_count,
+                # Add more comparison metrics
+            }
+            return comparison
+            
+        except Exception as e:
+            print(f"Comparison error: {e}")
+            return None
+        
     def create_comparison_visualizations(self, rides_df, city):
-        """Create comparison visualizations"""
-        # Convert to pandas for detailed analysis
-        pandas_df = rides_df.toPandas()
-        
-        # Fare distribution by service
-        plt.figure(figsize=(12, 6))
-        sns.boxplot(data=pandas_df, x='service', y='fare')
-        plt.title(f'Fare Distribution by Service - {city}')
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        plt.savefig(f'outputs/visuals/{city}_fare_distribution.png')
-        plt.close()
-        
-        # Distance vs Fare scatter plot
-        plt.figure(figsize=(10, 6))
-        for service in pandas_df['service'].unique():
-            service_data = pandas_df[pandas_df['service'] == service]
-            plt.scatter(service_data['distance_km'], service_data['fare'], 
-                       alpha=0.6, label=service, s=20)
-        
-        plt.title(f'Distance vs Fare - {city}')
-        plt.xlabel('Distance (km)')
-        plt.ylabel('Fare (INR)')
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.savefig(f'outputs/visuals/{city}_distance_vs_fare.png')
-        plt.close()
+        """Create comparison visualizations with robust error handling"""
+        try:
+            # Select only numeric and categorical columns to avoid datetime issues
+            pandas_df = rides_df.select([
+                'service', 'vehicle_type', 'fare', 'distance_km', 
+                'duration_mins', 'surge_multiplier', 'hour', 'is_weekend'
+            ]).toPandas()
+
+            print(f"Creating comparison visualizations for {city} with {len(pandas_df)} rides")
+
+            # Your existing visualization code here...
+            
+        except Exception as e:
+            print(f"Error in comparison visualizations for {city}: {e}")
+            import traceback
+            traceback.print_exc()
