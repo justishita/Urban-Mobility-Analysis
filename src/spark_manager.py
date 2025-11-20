@@ -42,6 +42,9 @@ class SparkManager:
                 # .config("spark.executor.memory", Config.SPARK_EXECUTOR_MEMORY)
                 .config("spark.hadoop.fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
                 .config("spark.hadoop.fs.AbstractFileSystem.file.impl", "org.apache.hadoop.fs.local.LocalFs")
+                .config("spark.jars.packages","org.mongodb.spark:mongo-spark-connector_2.12:10.2.0") \
+                .config("spark.mongodb.read.connection.uri", Config().MONGO_URI) \
+                .config("spark.mongodb.write.connection.uri", Config().MONGO_URI)
                 .getOrCreate()
             )
 
