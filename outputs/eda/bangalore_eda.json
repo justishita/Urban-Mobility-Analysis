@@ -1,0 +1,20 @@
+{
+    "city": "bangalore",
+    "file_analysis": {
+        "agency": {
+            "file_path": "data/bangalore/agency.txt",
+            "records": 1,
+            "columns": 4,
+            "column_names": [
+                "agency_id",
+                "agency_name",
+                "agency_url",
+                "agency_timezone"
+            ],
+            "data_types": {
+                "agency_id": "int64",
+                "agency_name": "object",
+                "agency_url": "object",
+                "agency_timezone": "object"
+            },
+            "df": 

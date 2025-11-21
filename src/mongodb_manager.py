@@ -1,30 +1,88 @@
-import os
+"""
+MongoDB Manager for Urban Mobility Analysis
+
+This module provides a high-level interface for MongoDB operations including
+connection management, data import/export, and index management. It's designed
+to work with GTFS (General Transit Feed Specification) data and urban mobility
+analytics.
+
+Architecture Note:
+- MongoDB is used as the primary data store for processed GTFS data and analytics
+- Collections are organized by city and data type (stops, routes, trips, etc.)
+- Indexes are created for common query patterns to ensure good performance
+"""
+
+import logging
+from typing import Dict, List, Optional, Union
 import pymongo
-from pymongo import MongoClient, ASCENDING
-from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+from pymongo import MongoClient, ASCENDING, DESCENDING
+from pymongo.errors import (
+    ConnectionFailure,
+    ServerSelectionTimeoutError,
+    BulkWriteError,
+    DuplicateKeyError
+)
 import pandas as pd
 from config import Config
 from data_loader import DataLoader
 
-
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 class MongoDBManager:
-    """Manage MongoDB operations including connection, data import, and indexing"""
+    """
+    A MongoDB manager for handling all database operations in the Urban Mobility Analysis system.
+    
+    This class provides methods to:
+    - Establish and manage MongoDB connections
+    - Import/export GTFS data
+    - Create and manage database indexes
+    - Execute common queries
+    - Handle bulk operations efficiently
+    
+    Attributes:
+        config (Config): Application configuration
+        client (MongoClient): MongoDB client instance
+        db (Database): MongoDB database instance
+    """
     
     def __init__(self):
+        """Initialize MongoDBManager and establish database connection.
+        
+        Raises:
+            ConnectionFailure: If unable to connect to MongoDB
+            ServerSelectionTimeoutError: If MongoDB server is not reachable
+            Exception: For any other connection-related errors
+        """
         self.config = Config()
         self.client = None
         self.db = None
         self._connect()
     
-    def _connect(self):
-        """Establish connection to MongoDB"""
+    def _connect(self) -> None:
+        """
+        Establish a connection to MongoDB with retry logic.
+        
+        The connection uses settings from the Config class and includes
+        appropriate timeouts for various operations.
+        
+        Raises:
+            ConnectionFailure: If connection to MongoDB fails
+            ServerSelectionTimeoutError: If MongoDB server is not reachable
+            Exception: For any other connection-related errors
+        """
         try:
             self.client = MongoClient(
                 self.config.MONGO_URI,
                 serverSelectionTimeoutMS=120000,
                 connectTimeoutMS=120000,
                 socketTimeoutMS=120000,
+                retryWrites=True,
+                w='majority'
             )
             
             # Test connection
@@ -44,7 +102,6 @@ class MongoDBManager:
             raise
     
     def import_city_data(self, city):
-        """Import all GTFS data for a city to MongoDB"""
         if not DataLoader.validate_gtfs_files(city):
             print(f"GTFS validation failed for {city}")
             return False

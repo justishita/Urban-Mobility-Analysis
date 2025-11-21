@@ -17,11 +17,19 @@ class ModelBuilder:
     """Build and evaluate predictive models for surge pricing"""
 
     def __init__(self,spark):
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+
         self.spark = (
             SparkSession.builder
             .appName("Urban Mobility Analysis - ModelBuilder")
             .config("spark.hadoop.fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
             .config("spark.hadoop.fs.AbstractFileSystem.file.impl", "org.apache.hadoop.fs.local.LocalFs")
+            .config("spark.sql.adaptive.enabled", "true") 
+            .config("spark.sql.adaptive.coalescePartitions.enabled", "true")
+            .config("spark.local.dir", temp_dir) 
+            .config("spark.cleaner.periodicGC.interval", "1min") 
+            .config("spark.cleaner.referenceTracking.cleanCheckpoints", "true") 
             .getOrCreate()
         )
 

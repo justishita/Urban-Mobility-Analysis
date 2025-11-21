@@ -1,0 +1,26 @@
+{
+    "city": "delhi",
+    "file_analysis": {
+        "agency": {
+            "file_path": "data/delhi/agency.txt",
+            "records": 2,
+            "columns": 7,
+            "column_names": [
+                "agency_id",
+                "agency_name",
+                "agency_url",
+                "agency_timezone",
+                "agency_lang",
+                "agency_phone",
+                "agency_fare_url"
+            ],
+            "data_types": {
+                "agency_id": "object",
+                "agency_name": "object",
+                "agency_url": "object",
+                "agency_timezone": "object",
+                "agency_lang": "object",
+                "agency_phone": "float64",
+                "agency_fare_url": "float64"
+            },
+            "df": 

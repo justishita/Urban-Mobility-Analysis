@@ -72,7 +72,7 @@ def main():
 
         # Step 3: Setup Spark
         print("\n3. Spark Setup")
-        spark = SparkManager.setup_spark()
+        spark = SparkManager.get_spark_session()
         if spark is None:
             print("Spark setup failed. Please install Spark dependencies (pyspark, findspark).")
             return
