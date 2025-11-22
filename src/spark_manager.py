@@ -9,15 +9,6 @@ warnings.filterwarnings('ignore')
 class SparkManager:
     """
     Singleton manager for SparkSession with MongoDB integration.
-    
-    This class ensures a single SparkSession instance is created and reused
-    throughout the application. It handles Windows-specific Hadoop configurations
-    and provides a clean interface for Spark operations.
-    
-    Architecture Note:
-    - Uses Hadoop/HDFS (or local folder) for scalable storage of large GTFS data
-    - Leverages Spark for distributed computation (joins, aggregations, ML)
-    - Integrates MongoDB for flexible schema storage and analytics
     """
     _instance: Optional['SparkManager'] = None
     _spark: Optional[SparkSession] = None
@@ -42,7 +33,6 @@ class SparkManager:
             os.environ["PATH"] = f"{bin_path};{os.environ.get('PATH', '')}"
     
     def _initialize_spark(self):
-        """Initialize and configure the SparkSession."""
         try:
             import findspark
             findspark.init()
@@ -50,12 +40,19 @@ class SparkManager:
             self._setup_windows_hadoop()
             
             # MongoDB Spark connector configuration
-            mongo_pkg = "org.mongodb.spark:mongo-spark-connector_2.12:10.2.0"
+            mongo_packages = [
+                "org.mongodb.spark:mongo-spark-connector_2.12:10.2.1",
+                "org.mongodb:mongodb-driver-sync:4.11.1",
+                "org.mongodb:bson:4.11.1",
+                "org.mongodb:mongodb-driver-core:4.11.1"
+            ]
+            
+            packages_str = ",".join(mongo_packages)
             
             self._spark = (
                 SparkSession.builder
                 .appName("UrbanMobilityPipeline")
-                .config("spark.jars.packages", mongo_pkg)
+                .config("spark.jars.packages", packages_str)
                 .config("spark.mongodb.read.connection.uri", Config().MONGO_URI)
                 .config("spark.mongodb.write.connection.uri", Config().MONGO_URI)
                 .config("spark.sql.execution.arrow.pyspark.enabled", "true")
@@ -68,48 +65,57 @@ class SparkManager:
                 .config("spark.cleaner.referenceTracking.cleanCheckpoints", "true")
                 .config("spark.local.dir", "C:/spark_temp") 
                 .config("spark.test.noDeleteOutput", "true")
+                .master("local[*]")
                 .getOrCreate()
             )
             
             self._spark.sparkContext.setLogLevel("WARN")
+            print("Spark session created successfully with MongoDB support")
             
         except Exception as e:
-            raise RuntimeError(f"Failed to initialize Spark session: {str(e)}")
+            print(f"Spark session with MongoDB failed: {e}")
+            print("Falling back to basic Spark session...")
+            self._initialize_basic_spark()
+    
+    def _initialize_basic_spark(self):
+        """Initialize basic Spark session without MongoDB dependencies"""
+        try:
+            self._spark = (
+                SparkSession.builder
+                .appName("UrbanMobilityPipeline")
+                .config("spark.sql.execution.arrow.pyspark.enabled", "true")
+                .config("spark.sql.adaptive.enabled", "true")
+                .config("spark.driver.memory", "2g")
+                .config("spark.executor.memory", "2g")
+                .config("spark.sql.legacy.timeParserPolicy", "LEGACY")
+                .master("local[*]")
+                .getOrCreate()
+            )
+            self._spark.sparkContext.setLogLevel("WARN")
+            print("✅ Basic Spark session created (MongoDB features disabled)")
+        except Exception as e:
+            print(f"❌ Basic Spark session also failed: {e}")
+            raise RuntimeError(f"Failed to initialize any Spark session: {str(e)}")
     
     @property
     def spark(self) -> SparkSession:
-        """Get the SparkSession instance.
-        
-        Returns:
-            SparkSession: The active SparkSession instance.
-            
-        Raises:
-            RuntimeError: If SparkSession initialization failed.
-        """
+        """Get the SparkSession instance."""
         if self._spark is None:
             self._initialize_spark()
         return self._spark
-    
-    def get_spark_session(self) -> SparkSession:
-        """Alias for the spark property for backward compatibility.
-        
-        Returns:
-            SparkSession: The active SparkSession instance.
-            
-        Raises:
-            RuntimeError: If SparkSession initialization failed.
-        """
-        return SparkManager().spark
 
-        
+    # FIXED: Remove the duplicate get_spark_session instance method
+    # and keep only the class method
+    
+    @classmethod
+    def get_spark_session(cls) -> SparkSession:
+        """Get Spark session instance (class method)."""
+        instance = cls()
+        return instance.spark
+
     @staticmethod
     def stop_spark(spark):
+        """Stop the Spark session."""
         if spark:
             spark.stop()
             print("Spark session stopped successfully!")
-
-    @classmethod
-    def get_spark_session(cls) -> SparkSession:
-        """Alias for the spark property for backward compatibility."""
-        instance = cls()
-        return instance.spark

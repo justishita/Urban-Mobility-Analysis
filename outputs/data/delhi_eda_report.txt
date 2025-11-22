@@ -49,9 +49,9 @@ Duplicates: 0
   zone_id: 1,786 (28.2%)
  DATA QUALITY ISSUES:
   zero_values_stop_id: 1
-  zero_values_zone_id: 1
   outliers_stop_lat: 13
   outliers_stop_lon: 12
+  zero_values_zone_id: 1
 
 ------------------------------
 
@@ -64,8 +64,8 @@ Duplicates: 0
  No missing values
  DATA QUALITY ISSUES:
   zero_values_stop_id: 2,174
-  zero_values_stop_sequence: 78,507
   outliers_stop_id: 286,184
+  zero_values_stop_sequence: 78,507
   outliers_stop_sequence: 23,490
 
 ------------------------------

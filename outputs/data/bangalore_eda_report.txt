@@ -32,9 +32,9 @@ Duplicates: 0
  MISSING VALUES:
   transfers: 60 (100.0%)
  DATA QUALITY ISSUES:
+  outliers_price: 4
   zero_values_payment_method: 60
   zero_values_transfer_duration: 60
-  outliers_price: 4
 
 ------------------------------
 
@@ -80,11 +80,11 @@ Duplicates: 0
 
  No missing values
  DATA QUALITY ISSUES:
-  zero_values_shape_pt_sequence: 7,095
-  zero_values_shape_dist_traveled: 7,095
   outliers_shape_pt_lat: 71,549
   outliers_shape_pt_lon: 86,546
+  zero_values_shape_pt_sequence: 7,095
   outliers_shape_pt_sequence: 44,365
+  zero_values_shape_dist_traveled: 7,095
   outliers_shape_dist_traveled: 37,674
 
 ------------------------------

@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 from config import Config
 
 class DataLoader:
@@ -24,12 +26,10 @@ class DataLoader:
         for file in required_files:
             file_path = os.path.join(city_path, file)
             
-            # Check if file exists
             if not os.path.exists(file_path):
                 missing_files.append(file)
                 continue
             
-            # Check if file has content
             try:
                 file_size = os.path.getsize(file_path)
                 if file_size == 0:
@@ -41,7 +41,6 @@ class DataLoader:
                 print(f"Error accessing {file}: {e}")
                 empty_files.append(file)
         
-        # Report validation results
         if missing_files:
             print(f"Missing files for {city}: {missing_files}")
         
@@ -55,12 +54,34 @@ class DataLoader:
             return False
     
     @staticmethod
+    def validate_gtfs_structure(df, file_type):
+        """Validate basic GTFS file structure"""
+        if df.empty:
+            return False
+        
+        required_columns = {
+            'routes': ['route_id', 'route_short_name', 'route_long_name'],
+            'trips': ['trip_id', 'route_id', 'service_id'],
+            'stops': ['stop_id', 'stop_name', 'stop_lat', 'stop_lon'],
+            'stop_times': ['trip_id', 'stop_id', 'stop_sequence', 'arrival_time'],
+            'agency': ['agency_id', 'agency_name', 'agency_timezone'],
+            'calendar': ['service_id', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'start_date', 'end_date']
+        }
+        
+        if file_type in required_columns:
+            missing_cols = [col for col in required_columns[file_type] if col not in df.columns]
+            if missing_cols:
+                print(f"Missing required columns in {file_type}: {missing_cols}")
+                return False
+        
+        return True
+
+    @staticmethod
     def load_gtfs_file(city, file_type):
         """Load a single GTFS file as pandas DataFrame with encoding detection"""
         file_path = os.path.join(Config.get_city_data_path(city), f"{file_type}.txt")
         
         try:
-            # Try different encodings
             encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252']
             df = None
             
@@ -76,15 +97,12 @@ class DataLoader:
                 print(f"Could not load {file_type} with any encoding")
                 return pd.DataFrame()
             
-            # Basic data validation
             print(f"{file_type}: {len(df)} records, {len(df.columns)} columns")
             
-            # Show data sample and info
             if len(df) > 0:
                 print(f"Columns: {list(df.columns)}")
                 print(f"Data types: {df.dtypes.to_dict()}")
                 
-                # Check for missing values
                 missing_stats = df.isnull().sum()
                 if missing_stats.sum() > 0:
                     print(f"Missing values: {missing_stats[missing_stats > 0].to_dict()}")
@@ -95,7 +113,7 @@ class DataLoader:
             print(f"File not found: {file_path}")
             return pd.DataFrame()
         except Exception as e:
-            print(f" Error loading {file_type}: {e}")
+            print(f"Error loading {file_type}: {e}")
             return pd.DataFrame()
     
     @staticmethod
@@ -137,46 +155,59 @@ class DataLoader:
         return df
     
     @staticmethod
-    def validate_gtfs_structure(df, file_type):
-        """Validate basic GTFS file structure"""
+    def get_data_quality_report(df, file_type):
+        """Get comprehensive data quality report for EDA"""
         if df.empty:
-            return False
+            return {
+                'records': 0,
+                'columns': 0,
+                'missing_values': {},
+                'quality_issues': {},
+                'memory_usage_mb': 0
+            }
         
-        # Define required columns for each file type
-        required_columns = {
-            'routes': ['route_id', 'route_short_name', 'route_long_name'],
-            'trips': ['trip_id', 'route_id', 'service_id'],
-            'stops': ['stop_id', 'stop_name', 'stop_lat', 'stop_lon'],
-            'stop_times': ['trip_id', 'stop_id', 'stop_sequence', 'arrival_time'],
-            'agency': ['agency_id', 'agency_name', 'agency_timezone']
+        # Missing values analysis
+        missing = df.isnull().sum()
+        missing_pct = (missing / len(df)) * 100
+        
+        # Data quality issues
+        quality_issues = {}
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        
+        for col in numeric_cols:
+            # Negative values check
+            if (df[col] < 0).any():
+                quality_issues[f'negative_values_{col}'] = (df[col] < 0).sum()
+            
+            # Zero values check (where not expected)
+            if (df[col] == 0).any() and col not in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
+                quality_issues[f'zero_values_{col}'] = (df[col] == 0).sum()
+            
+            # Outliers detection
+            if df[col].dtype in ['float64', 'int64']:
+                Q1 = df[col].quantile(0.25)
+                Q3 = df[col].quantile(0.75)
+                IQR = Q3 - Q1
+                outliers = ((df[col] < (Q1 - 1.5 * IQR)) | (df[col] > (Q3 + 1.5 * IQR))).sum()
+                if outliers > 0:
+                    quality_issues[f'outliers_{col}'] = outliers
+        
+        return {
+            'records': len(df),
+            'columns': len(df.columns),
+            'column_names': list(df.columns),
+            'data_types': df.dtypes.astype(str).to_dict(),
+            'memory_usage_mb': df.memory_usage(deep=True).sum() / 1024**2,
+            'duplicates': df.duplicated().sum(),
+            'missing_values': {
+                'total_missing': missing.sum(),
+                'missing_by_column': missing[missing > 0].to_dict(),
+                'missing_pct_by_column': missing_pct[missing_pct > 0].to_dict(),
+                'columns_with_missing': list(missing[missing > 0].index)
+            },
+            'quality_issues': quality_issues,
+            'numeric_stats': df.select_dtypes(include=[np.number]).describe().to_dict() if len(numeric_cols) > 0 else {},
+            'categorical_stats': {col: df[col].value_counts().head(10).to_dict() 
+                                for col in df.select_dtypes(include=['object']).columns[:5]}  # Limit to first 5 categorical columns
         }
-        
-        if file_type in required_columns:
-            missing_cols = [col for col in required_columns[file_type] if col not in df.columns]
-            if missing_cols:
-                print(f"Missing required columns in {file_type}: {missing_cols}")
-                return False
-        
-        return True
-    
-    @staticmethod
-    def load_large_file_with_chunking(city, file_type, chunk_size=50000):
-        """Load large GTFS files with chunking to avoid MongoDB timeouts"""
-        file_path = os.path.join(Config.get_city_data_path(city), f"{file_type}.txt")
-        
-        try:
-            # Read the entire file first to get info
-            df_full = pd.read_csv(file_path, encoding='utf-8')
-            total_records = len(df_full)
-            print(f"{file_type}: {total_records} records, will load in chunks")
-            
-            # Return the full DataFrame but warn about size
-            if total_records > 100000:
-                print(f"Large file detected: {file_type} has {total_records} records")
-                print(f"Consider chunking for MongoDB import")
-            
-            return df_full
-            
-        except Exception as e:
-            print(f"Error loading {file_type}: {e}")
-            return pd.DataFrame()
+
