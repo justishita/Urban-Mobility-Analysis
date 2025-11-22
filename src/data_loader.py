@@ -19,7 +19,7 @@ class DataLoader:
         missing_files = []
         empty_files = []
         
-        print(f"🔍 Validating GTFS files for {city}...")
+        print(f"Validating GTFS files for {city}...")
         
         for file in required_files:
             file_path = os.path.join(city_path, file)
@@ -81,8 +81,8 @@ class DataLoader:
             
             # Show data sample and info
             if len(df) > 0:
-                print(f"      Columns: {list(df.columns)}")
-                print(f"      Data types: {df.dtypes.to_dict()}")
+                print(f"Columns: {list(df.columns)}")
+                print(f"Data types: {df.dtypes.to_dict()}")
                 
                 # Check for missing values
                 missing_stats = df.isnull().sum()
@@ -172,8 +172,8 @@ class DataLoader:
             
             # Return the full DataFrame but warn about size
             if total_records > 100000:
-                print(f"⚠️  Large file detected: {file_type} has {total_records} records")
-                print(f"   Consider chunking for MongoDB import")
+                print(f"Large file detected: {file_type} has {total_records} records")
+                print(f"Consider chunking for MongoDB import")
             
             return df_full
             

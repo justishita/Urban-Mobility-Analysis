@@ -75,6 +75,8 @@ class SparkManager:
                 .config("spark.hadoop.fs.AbstractFileSystem.file.impl", "org.apache.hadoop.fs.local.LocalFs")
                 .config("spark.cleaner.periodicGC.interval", "1min")
                 .config("spark.cleaner.referenceTracking.cleanCheckpoints", "true")
+                .config("spark.local.dir", "C:/spark_temp") 
+                .config("spark.test.noDeleteOutput", "true")
                 .getOrCreate()
             )
             
