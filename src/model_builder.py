@@ -8,10 +8,6 @@ from pyspark.ml.evaluation import RegressionEvaluator, BinaryClassificationEvalu
 import matplotlib.pyplot as plt
 import numpy as np
 from pyspark.sql import SparkSession
-import platform
-import joblib
-
-
 
 class ModelBuilder:
     """Build and evaluate predictive models for surge pricing"""
@@ -115,28 +111,78 @@ class ModelBuilder:
             return {}
 
     def save_models(self, models, problem_type):
-        """Save models safely — use Spark save on Linux/macOS, joblib on Windows."""
-        os.makedirs('models', exist_ok=True)
-
-        is_windows = platform.system().lower().startswith('win')
-
-        for name, model in models.items():
-            try:
-                model_path = os.path.join('models', f"{problem_type}_{name.lower()}")
-
-                if is_windows:
-                    # Fallback: use joblib for Windows
-                    pkl_path = model_path + ".pkl"
-                    joblib.dump(model, pkl_path)
-                    print(f" Saved {name} (joblib) to {pkl_path}")
-                else:
-                    # Use native Spark model save
+        """Save PySpark ML models using their native save method"""
+        try:
+            model_dir = os.path.join('models', problem_type)
+            os.makedirs(model_dir, exist_ok=True)
+            
+            saved_models = []
+            for name, model in models.items():
+                try:
+                    # Use PySpark's native save method
+                    model_path = os.path.join(model_dir, name)
                     model.write().overwrite().save(model_path)
-                    print(f" Saved {name} (Spark) to {model_path}")
+                    saved_models.append(name)
+                    print(f"✓ Saved {name} to {model_path}")
+                    
+                except Exception as e:
+                    print(f"Error saving {name}: {e}")
+                    # Try alternative save method for problematic models
+                    try:
+                        # For models that can't be saved normally, save only the necessary parameters
+                        alternative_path = os.path.join(model_dir, f"{name}_alternative")
+                        self._save_model_alternative(model, alternative_path, name)
+                        saved_models.append(f"{name}_alternative")
+                        print(f"✓ Saved {name} (alternative method) to {alternative_path}")
+                    except Exception as alt_e:
+                        print(f"Alternative save also failed for {name}: {alt_e}")
+                    continue
+            
+            print(f"Successfully saved {len(saved_models)}/{len(models)} models for {problem_type}")
+            return saved_models
+            
+        except Exception as e:
+            print(f"Error in save_models: {e}")
+            traceback.print_exc()
+            return []
 
-            except Exception as e:
-                print(f"Error saving {name}: {e}")
-                traceback.print_exc()
+    def _save_model_alternative(self, model, model_path, model_name):
+        """Alternative save method for problematic models"""
+        try:
+            # For LinearRegression and similar models, extract and save coefficients
+            if hasattr(model, 'coefficients') and hasattr(model, 'intercept'):
+                model_info = {
+                    'model_type': model_name,
+                    'coefficients': model.coefficients.toArray().tolist() if hasattr(model.coefficients, 'toArray') else str(model.coefficients),
+                    'intercept': float(model.intercept),
+                    'save_time': datetime.now().isoformat()
+                }
+                os.makedirs(model_path, exist_ok=True)
+                with open(os.path.join(model_path, 'model_info.json'), 'w') as f:
+                    json.dump(model_info, f, indent=2)
+            else:
+                # For tree-based models, save feature importances if available
+                if hasattr(model, 'featureImportances'):
+                    model_info = {
+                        'model_type': model_name,
+                        'feature_importances': model.featureImportances.toArray().tolist(),
+                        'save_time': datetime.now().isoformat()
+                    }
+                    os.makedirs(model_path, exist_ok=True)
+                    with open(os.path.join(model_path, 'model_info.json'), 'w') as f:
+                        json.dump(model_info, f, indent=2)
+                else:
+                    # Last resort: save model summary
+                    model_info = {
+                        'model_type': model_name,
+                        'summary': str(model),
+                        'save_time': datetime.now().isoformat()
+                    }
+                    os.makedirs(model_path, exist_ok=True)
+                    with open(os.path.join(model_path, 'model_info.json'), 'w') as f:
+                        json.dump(model_info, f, indent=2)
+        except Exception as e:
+            raise Exception(f"Alternative save failed: {e}")
 
 
     def create_model_comparison(self, results, problem_type):

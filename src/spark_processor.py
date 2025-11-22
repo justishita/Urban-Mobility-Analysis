@@ -12,7 +12,6 @@ class SparkProcessor:
         self.spark = spark
     
     def pandas_to_spark_with_schema(self, pandas_df):
-        """Convert pandas DataFrame to Spark DataFrame with proper schema handling"""
         if pandas_df.empty:
             return None
         
@@ -28,7 +27,6 @@ class SparkProcessor:
             return self.spark.createDataFrame(pandas_df, schema)
     
     def _clean_dataframe_columns(self, pandas_df):
-        """Clean column names for Spark compatibility"""
         pandas_df.columns = [col.replace(' ', '_').replace('-', '_').lower() for col in pandas_df.columns]
         return pandas_df
     

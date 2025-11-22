@@ -26,7 +26,7 @@ class EDAAnalyzer:
         
         for file in gtfs_files:
             file_type = file.replace('.txt', '')
-            print(f"  Analyzing {file_type}...")
+            print(f"Analyzing {file_type}...")
             
             file_analysis = self._analyze_file(city, file_type)
             eda_results['file_analysis'][file_type] = file_analysis
@@ -53,7 +53,7 @@ class EDAAnalyzer:
             'columns': len(df.columns),
             'column_names': list(df.columns),
             'data_types': df.dtypes.astype(str).to_dict(),
-            'df': df,  # Keep for further analysis
+            'df': df,  
             'memory_usage_mb': df.memory_usage(deep=True).sum() / 1024**2,
             'duplicates': df.duplicated().sum()
         }
@@ -67,7 +67,7 @@ class EDAAnalyzer:
         categorical_cols = df.select_dtypes(include=['object']).columns
         if len(categorical_cols) > 0:
             analysis['categorical_stats'] = {}
-            for col in categorical_cols[:5]:  # Limit to first 5 to avoid too much output
+            for col in categorical_cols[:5]:  
                 analysis['categorical_stats'][col] = df[col].value_counts().head(10).to_dict()
         
         return analysis

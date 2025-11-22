@@ -11,7 +11,7 @@ Architecture Note:
 - Collections are organized by city and data type (stops, routes, trips, etc.)
 - Indexes are created for common query patterns to ensure good performance
 """
-
+import os
 import logging
 from typing import Dict, List, Optional, Union
 import pymongo

@@ -1,17 +1,9 @@
-"""
-Spark session management with MongoDB connector and optimized configuration.
-
-This module provides a singleton SparkSession instance with MongoDB connector
-pre-configured for distributed data processing. It handles Windows-specific
-Hadoop configurations and ensures proper resource allocation.
-"""
 import os
 import warnings
 from typing import Optional
 from pyspark.sql import SparkSession
 from config import Config
 
-# Suppress unnecessary warnings
 warnings.filterwarnings('ignore')
 
 class SparkManager:
@@ -37,7 +29,6 @@ class SparkManager:
         return cls._instance
     
     def _setup_windows_hadoop(self):
-        """Configure Hadoop environment for Windows systems."""
         if os.name != 'nt':
             return
             
@@ -80,7 +71,6 @@ class SparkManager:
                 .getOrCreate()
             )
             
-            # Set log level to WARN to reduce verbosity
             self._spark.sparkContext.setLogLevel("WARN")
             
         except Exception as e:
@@ -114,7 +104,6 @@ class SparkManager:
         
     @staticmethod
     def stop_spark(spark):
-        """Stop Spark session gracefully"""
         if spark:
             spark.stop()
             print("Spark session stopped successfully!")
