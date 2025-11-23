@@ -1,28 +1,10 @@
-"""
-MongoDB Manager for Urban Mobility Analysis
-
-This module provides a high-level interface for MongoDB operations including
-connection management, data import/export, and index management. It's designed
-to work with GTFS (General Transit Feed Specification) data and urban mobility
-analytics.
-
-Architecture Note:
-- MongoDB is used as the primary data store for processed GTFS data and analytics
-- Collections are organized by city and data type (stops, routes, trips, etc.)
-- Indexes are created for common query patterns to ensure good performance
-"""
 import os
 import logging
-from typing import Dict, List, Optional, Union
-import pymongo
-from pymongo import MongoClient, ASCENDING, DESCENDING
+from pymongo import MongoClient, ASCENDING
 from pymongo.errors import (
     ConnectionFailure,
     ServerSelectionTimeoutError,
-    BulkWriteError,
-    DuplicateKeyError
 )
-import pandas as pd
 from config import Config
 from data_loader import DataLoader
 
@@ -33,31 +15,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-class MongoDBManager:
-    """
-    A MongoDB manager for handling all database operations in the Urban Mobility Analysis system.
-    
-    This class provides methods to:
-    - Establish and manage MongoDB connections
-    - Import/export GTFS data
-    - Create and manage database indexes
-    - Execute common queries
-    - Handle bulk operations efficiently
-    
-    Attributes:
-        config (Config): Application configuration
-        client (MongoClient): MongoDB client instance
-        db (Database): MongoDB database instance
-    """
-    
+class MongoDBManager:    
     def __init__(self):
-        """Initialize MongoDBManager and establish database connection.
-        
-        Raises:
-            ConnectionFailure: If unable to connect to MongoDB
-            ServerSelectionTimeoutError: If MongoDB server is not reachable
-            Exception: For any other connection-related errors
-        """
         self.config = Config()
         self.client = None
         self.db = None
@@ -65,11 +24,6 @@ class MongoDBManager:
     
     def _connect(self) -> None:
         """
-        Establish a connection to MongoDB with retry logic.
-        
-        The connection uses settings from the Config class and includes
-        appropriate timeouts for various operations.
-        
         Raises:
             ConnectionFailure: If connection to MongoDB fails
             ServerSelectionTimeoutError: If MongoDB server is not reachable
@@ -89,16 +43,16 @@ class MongoDBManager:
             self.client.admin.command('ismaster')
             self.db = self.client[self.config.DATABASE_NAME]
             print("MongoDB connected successfully!")
-            print(f" Database: {self.config.DATABASE_NAME}")
+            print(f"Database: {self.config.DATABASE_NAME}")
             
         except ServerSelectionTimeoutError:
-            print(" MongoDB server selection timeout. Please check if MongoDB is running.")
+            print("MongoDB server selection timeout. Please check if MongoDB is running.")
             raise
         except ConnectionFailure:
-            print(" MongoDB connection failed. Please check the connection string.")
+            print("MongoDB connection failed. Please check the connection string.")
             raise
         except Exception as e:
-            print(f" MongoDB connection error: {e}")
+            print(f"MongoDB connection error: {e}")
             raise
     
     def import_city_data(self, city):
@@ -118,10 +72,8 @@ class MongoDBManager:
             df = DataLoader.load_gtfs_file(city, file_type)
             
             if not df.empty:
-                # Clean column names
                 df = DataLoader.clean_column_names(df)
                 
-                # Validate structure
                 if not DataLoader.validate_gtfs_structure(df, file_type):
                     print(f"Skipping {file_type} due to structural issues")
                     continue
@@ -138,25 +90,22 @@ class MongoDBManager:
         return imported_files > 0
     
     def _import_dataframe_to_collection(self, df, collection_name):
-        """Import a DataFrame to MongoDB collection"""
         try:
             collection = self.db[collection_name]
             
-            # Clear existing data
             collection.delete_many({})
             
-            # Convert DataFrame to records and insert
             records = df.to_dict('records')
             if records:
                 result = collection.insert_many(records)
-                print(f" {collection_name}: {len(result.inserted_ids)} records")
+                print(f"{collection_name}: {len(result.inserted_ids)} records")
                 return True
             else:
-                print(f" No records to insert for {collection_name}")
+                print(f"No records to insert for {collection_name}")
                 return False
                 
         except Exception as e:
-            print(f" Error importing to {collection_name}: {e}")
+            print(f"Error importing to {collection_name}: {e}")
             return False
     
     def create_indexes(self, collection_name, file_type):
@@ -216,15 +165,14 @@ class MongoDBManager:
                 stats['collections'][coll_name] = count
                 stats['total_documents'] += count
                 
-                # Get collection stats
                 coll_stats = self.db.command('collstats', coll_name)
                 stats['database_size'] += coll_stats.get('size', 0)
                 
                 print(f"   {coll_name}: {count} documents")
             
             stats['database_size_mb'] = round(stats['database_size'] / (1024 * 1024), 2)
-            print(f"   Total documents: {stats['total_documents']}")
-            print(f"   Database size: {stats['database_size_mb']} MB")
+            print(f"Total documents: {stats['total_documents']}")
+            print(f"Database size: {stats['database_size_mb']} MB")
             
             return stats
             
@@ -243,7 +191,6 @@ class MongoDBManager:
             return []
     
     def close_connection(self):
-        """Close MongoDB connection"""
         if self.client:
             self.client.close()
             print(" MongoDB connection closed")

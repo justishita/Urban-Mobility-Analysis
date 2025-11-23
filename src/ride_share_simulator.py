@@ -9,15 +9,10 @@ import json
 from math import radians, sin, cos, sqrt, atan2
 
 
-class RideShareSimulator:
-    """Simulate realistic ride-sharing data with surge pricing"""
-    
+class RideShareSimulator:    
     def __init__(self):
         self.config = Config()
         self.route_cache = {}
-        
-        # Base pricing models for Indian ride-sharing (approximate)
-       # Update the pricing_models in __init__ method:
 
         self.pricing_models = {
             'uber': {
@@ -38,46 +33,37 @@ class RideShareSimulator:
         }
         
     def get_route_info(self, start_lat, start_lon, end_lat, end_lon):
-        """Get distance and duration with caching"""
-        # Create a cache key
         cache_key = f"{start_lat:.4f},{start_lon:.4f},{end_lat:.4f},{end_lon:.4f}"
         
-        # Check cache first
         if cache_key in self.route_cache:
             return self.route_cache[cache_key]
         
         try:
-            # Calculate straight-line distance (much faster than API calls)
             distance_km = self._calculate_straight_distance(start_lat, start_lon, end_lat, end_lon)
             
-            # Skip if distance is unreasonable
-            if distance_km > 50:  # Max 50km for urban rides
+            if distance_km > 70:
                 distance_km = np.random.uniform(2, 15)
             
-            # Estimate duration based on urban traffic patterns
-            base_duration = (distance_km / 25) * 60  # 25 km/h average
-            traffic_factor = np.random.uniform(1.2, 2.0)  # Traffic multiplier
+            base_duration = (distance_km / 25) * 60 
+            traffic_factor = np.random.uniform(1.2, 2.0) 
             duration_mins = base_duration * traffic_factor
             
-            result = (round(distance_km, 2), round(max(5, duration_mins)))  # At least 5 minutes
+            result = (round(distance_km, 2), round(max(5, duration_mins))) 
             
-            # Cache the result
             self.route_cache[cache_key] = result
             return result
             
         except Exception as e:
             print(f"Route calculation error: {e}")
-            # Reasonable fallback
             fallback = (round(np.random.uniform(3, 12), 2), round(np.random.uniform(10, 45)))
             self.route_cache[cache_key] = fallback
             return fallback
             
     
     def _calculate_straight_distance(self, lat1, lon1, lat2, lon2):
-        """Calculate straight-line distance between two points"""
         from math import radians, sin, cos, sqrt, atan2
         
-        R = 6371  # Earth radius in km
+        R = 6371  
         
         lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
         dlat = lat2 - lat1
@@ -98,9 +84,6 @@ class RideShareSimulator:
         # Base surge factors
         surge = 1.0
         
-        # **ACCURATE PEAK HOURS** (Based on Indian traffic patterns)
-        # Morning peak: 8 AM - 11 AM (office/school hours)
-        # Evening peak: 4 PM - 9 PM (return home + evening outings)
         if (hour >= 8 and hour <= 11) or (hour >= 16 and hour <= 21):
             surge += 0.4  # Higher surge during actual peak hours
         
@@ -112,8 +95,7 @@ class RideShareSimulator:
         elif hour >= 22 or hour <= 2:
             surge += 0.5  # Higher for safety/availability
         
-        # **WEEKEND SURGE** (Friday evening to Sunday night)
-        if day_of_week >= 5:  # Saturday (6) and Sunday (7)
+        if day_of_week >= 5: 
             surge += 0.3
         elif day_of_week == 4 and hour >= 16:  # Friday evening
             surge += 0.2
@@ -133,17 +115,13 @@ class RideShareSimulator:
         # Add some randomness
         surge += np.random.uniform(-0.1, 0.1)
         
-        # Cap surge between 1.0 and 5.0 (realistic for India - can go up to 5x during festivals)
         return max(1.0, min(5.0, surge))
 
     def _get_festival_surge(self, timestamp, city):
-        """Calculate festival-based surge pricing for Indian festivals"""
         month = timestamp.month
         day = timestamp.day
         surge = 0.0
-        
-        # **MAJOR INDIAN FESTIVALS** (with high travel demand)
-        
+                
         # January
         if month == 1 and day in [1, 14, 26]:  # New Year, Makar Sankranti, Republic Day
             surge += 0.8

@@ -10,7 +10,6 @@ from config import Config
 import traceback
 import numpy as np
 
-# try to import pymongo for fallback reads
 try:
     from pymongo import MongoClient
     PYMONGO_AVAILABLE = True
@@ -18,7 +17,7 @@ except Exception:
     PYMONGO_AVAILABLE = False
 
 class FeatureEngineer:
-    """Feature engineering for predictive modeling (robust Mongo + fallback)"""
+    """Feature engineering for predictive modeling"""
 
     def __init__(self, spark):
         self.spark = spark
@@ -26,10 +25,6 @@ class FeatureEngineer:
         self.database_name = Config().DATABASE_NAME
 
     def _spark_read_mongo(self, collection_name):
-        """
-        Try to read a collection via Spark's Mongo connector using format 'mongodb'.
-        If that fails, raise exception to trigger fallback.
-        """
         try:
             df = self.spark.read.format("mongodb") \
                 .option("uri", self.mongo_uri) \
@@ -41,7 +36,6 @@ class FeatureEngineer:
             raise
 
     def _pymongo_to_spark(self, collection_name):
-        """Fallback: use pymongo -> pandas -> spark"""
         if not PYMONGO_AVAILABLE:
             raise RuntimeError("pymongo not available for fallback reads")
         client = None
@@ -53,7 +47,6 @@ class FeatureEngineer:
             if not docs:
                 return None
             pdf = pd.DataFrame(docs)
-            # convert pandas -> spark DataFrame (let Spark infer schema)
             sdf = self.spark.createDataFrame(pdf)
             return sdf
         finally:
@@ -61,7 +54,6 @@ class FeatureEngineer:
                 client.close()
 
     def _read_collection(self, collection_name):
-        """Read a Mongo collection via spark mongodb connector, fallback to pymongo"""
         try:
             return self._spark_read_mongo(collection_name)
         except Exception as e:
@@ -83,9 +75,9 @@ class FeatureEngineer:
                 ride_features = self.get_ride_features(city)
                 if ride_features is not None:
                     all_features.append(ride_features)
-                    print(f"  Added ride features for {city}")
+                    print(f"Added ride features for {city}")
                 else:
-                    print(f"  No ride features for {city}")
+                    print(f"No ride features for {city}")
             except Exception as e:
                 print(f"  Error processing {city}: {e}")
                 traceback.print_exc()
@@ -94,12 +86,10 @@ class FeatureEngineer:
             print("No features data available")
             return None
 
-        # union all dataframes (ensure same schema)
+        # union all dataframes 
         modeling_df = all_features[0]
         for df in all_features[1:]:
             modeling_df = modeling_df.unionByName(df, allowMissingColumns=True)
-
-        # add demand index
 
         modeling_df = modeling_df.withColumn(
         "is_peak_hour",
@@ -127,9 +117,7 @@ class FeatureEngineer:
             print(f"    No data found in {collection_name}")
             return None
 
-        # ensure timestamp exists & proper type
         try:
-            # safe-cast timestamp if it's a string
             rides_df = rides_df.withColumn("timestamp", col("timestamp").cast("timestamp"))
         except Exception:
             pass
@@ -154,7 +142,6 @@ class FeatureEngineer:
                              ((col("hour_of_day") >= 16) & (col("hour_of_day") <= 21)), 1).otherwise(0)) \
             .withColumn("fare_per_km", when(col("distance_km") > 0, col("fare") / col("distance_km")).otherwise(col("fare")))
 
-        # group and aggregate (hour_of_day may be null if timestamp missing; filter those)
         rides_with_features = rides_with_features.filter(col("hour_of_day").isNotNull())
 
         features_df = rides_with_features.groupBy("hour_of_day", "is_weekend").agg(
@@ -167,7 +154,6 @@ class FeatureEngineer:
             avg("duration_mins").alias("avg_duration_mins")
         ).withColumn("city", lit(city))
 
-        # fill nulls for stddev etc.
         features_df = features_df.fillna({
             "std_surge_multiplier": 0.0,
             "avg_price_per_km": 0.0,
@@ -189,7 +175,6 @@ class FeatureEngineer:
                 rides_df = self._read_collection(collection_name)
                 if rides_df is None:
                     continue
-                # add basic time features
                 rides_df = rides_df.withColumn("timestamp", col("timestamp").cast("timestamp"))
                 rides_df = rides_df.withColumn("hour_of_day", hour(col("timestamp"))) \
                                    .withColumn("day_of_week", dayofweek(col("timestamp"))) \
@@ -234,7 +219,6 @@ class FeatureEngineer:
                 modeling_df = modeling_df.withColumn('high_surge', when(col('avg_surge_multiplier') > 1.5, 1).otherwise(0))
                 label_col = 'high_surge'
 
-            # ensure label exists (fill with reasonable default)
             if label_col not in modeling_df.columns:
                 modeling_df = modeling_df.withColumn(label_col, lit(0))
 

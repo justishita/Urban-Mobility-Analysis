@@ -1,21 +1,16 @@
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pyspark.sql.functions import col, count, mean, stddev, hour, dayofweek, when
-from pyspark.sql.types import StructType, StructField, StringType, DoubleType, TimestampType, IntegerType
 from config import Config
 from pymongo import MongoClient
 
 class RideShareAnalyzer:
-    """Analyze ride-sharing data for patterns and insights"""
-    
     def __init__(self, spark):
         self.spark = spark
         self.config = Config()
     
     def load_ride_data(self, city):
-        """Load ride data from MongoDB"""
         try:
             client = MongoClient(self.config.MONGO_URI)
             db = client[self.config.DATABASE_NAME]
@@ -67,7 +62,6 @@ class RideShareAnalyzer:
         return rides_clean
     
     def analyze_ride_patterns(self, rides_df):
-        """Analyze ride patterns and pricing"""
         analysis = {}
         
         # Price analysis by service
@@ -98,9 +92,6 @@ class RideShareAnalyzer:
         }
     
     def analyze_surge_patterns(self, rides_df):
-        """Analyze surge pricing patterns with Indian context"""
-        
-        # Peak vs Non-peak surge comparison
         peak_surge = rides_df.filter(col('is_peak_hour') == 1) \
             .groupBy('service') \
             .agg(mean('surge_multiplier').alias('avg_peak_surge'))
@@ -109,16 +100,12 @@ class RideShareAnalyzer:
             .groupBy('service') \
             .agg(mean('surge_multiplier').alias('avg_non_peak_surge'))
         
-        # Weekend vs Weekday surge
         weekend_surge = rides_df.filter(col('is_weekend') == 1) \
             .groupBy('service') \
             .agg(mean('surge_multiplier').alias('avg_weekend_surge'))
         
-        weekday_surge = rides_df.filter(col('is_weekend') == 0) \
-            .groupBy('service') \
-            .agg(mean('surge_multiplier').alias('avg_weekday_surge'))
+        weekday_surge = rides_df.filter(col('is_weekend') == 0).groupBy('service').agg(mean('surge_multiplier').alias('avg_weekday_surge'))
         
-        # Hourly surge patterns
         hourly_surge = rides_df.groupBy('hour', 'service') \
             .agg(mean('surge_multiplier').alias('avg_surge')) \
             .orderBy('hour', 'service')
@@ -130,8 +117,6 @@ class RideShareAnalyzer:
         }
     
     def create_ride_visualizations(self, analysis_results, city):
-        """Create visualizations for ride data"""
-        # Price comparison by service
         price_data = analysis_results['price_analysis'].toPandas()
         
         plt.figure(figsize=(12, 6))
@@ -142,7 +127,6 @@ class RideShareAnalyzer:
         plt.savefig(f'outputs/visuals/{city}_ride_prices.png')
         plt.close()
         
-        # Service popularity
         popularity_data = analysis_results['service_popularity'].toPandas()
         
         plt.figure(figsize=(10, 6))
@@ -155,8 +139,6 @@ class RideShareAnalyzer:
         plt.close()
     
     def create_surge_visualizations(self, analysis_results, city):
-        """Create visualizations focusing on Indian surge patterns"""
-        # Hourly surge patterns
         hourly_data = analysis_results['hourly_patterns'].toPandas()
         
         plt.figure(figsize=(15, 8))
@@ -166,7 +148,6 @@ class RideShareAnalyzer:
             plt.plot(service_data['hour'], service_data['avg_surge'], 
                     marker='o', label=service, linewidth=2, markersize=6)
         
-        # Highlight Indian peak hours
         plt.axvspan(8, 11, alpha=0.2, color='red', label='Morning Peak (8AM-11AM)')
         plt.axvspan(16, 21, alpha=0.2, color='orange', label='Evening Peak (4PM-9PM)')
         
@@ -181,26 +162,19 @@ class RideShareAnalyzer:
         plt.close()
         
         print(f"Saved Indian surge patterns: outputs/visuals/{city}_indian_surge_patterns.png")
-    
-    
 
     def create_city_comparison(delhi_data, bangalore_data):
-        """Create comparison between cities"""
         try:
-            # Ensure we're working with Spark DataFrames
-            if hasattr(delhi_data, 'select'):  # Spark DataFrame
-                # Your Spark operations here
+            if hasattr(delhi_data, 'select'):
                 delhi_count = delhi_data.count()
                 bangalore_count = bangalore_data.count()
-            else:  # Pandas DataFrame
-                # Convert or handle pandas operations
+            else:  
                 delhi_count = len(delhi_data)
                 bangalore_count = len(bangalore_data)
                 
             comparison = {
                 'delhi_records': delhi_count,
                 'bangalore_records': bangalore_count,
-                # Add more comparison metrics
             }
             return comparison
             
@@ -208,8 +182,7 @@ class RideShareAnalyzer:
             print(f"Comparison error: {e}")
             return None
         
-    def create_comparison_visualizations(self, rides_df, city):
-        """Create comparison visualizations with robust error handling"""
+    def create_comparison_visualizations(self, rides_df, city, analysis_results):
         try:
             # Select only numeric and categorical columns to avoid datetime issues
             pandas_df = rides_df.select([
@@ -219,8 +192,28 @@ class RideShareAnalyzer:
 
             print(f"Creating comparison visualizations for {city} with {len(pandas_df)} rides")
 
-            # Your existing visualization code here...
+            price_data = analysis_results['price_analysis'].toPandas()
+        
+            plt.figure(figsize=(12, 6))
+            sns.barplot(data=price_data, x='service', y='avg_fare', hue='vehicle_type')
+            plt.title(f'Average Ride Prices by Service - {city}')
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.savefig(f'outputs/visuals/{city}_ride_prices.png')
+            plt.close()
             
+            # Service popularity
+            popularity_data = analysis_results['service_popularity'].toPandas()
+            
+            plt.figure(figsize=(10, 6))
+            plt.bar(popularity_data['service'], popularity_data['total_rides'])
+            plt.title(f'Ride Service Popularity - {city}')
+            plt.xlabel('Service')
+            plt.ylabel('Number of Rides')
+            plt.tight_layout()
+            plt.savefig(f'outputs/visuals/{city}_service_popularity.png')
+            plt.close()
+                
         except Exception as e:
             print(f"Error in comparison visualizations for {city}: {e}")
             import traceback

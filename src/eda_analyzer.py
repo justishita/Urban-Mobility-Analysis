@@ -7,14 +7,11 @@ from config import Config
 from data_loader import DataLoader
 
 class EDAAnalyzer:
-    """Leverages DataLoader for EDA-specific analysis and visualization"""
-    
     def __init__(self):
         self.config = Config()
         self.data_loader = DataLoader()
     
     def analyze_city_data(self, city):
-        """Perform comprehensive EDA for a city using DataLoader"""
         print(f"\nPerforming EDA for {city}...")
         
         eda_results = {
@@ -37,7 +34,7 @@ class EDAAnalyzer:
             
             eda_results['file_analysis'][file_type] = {
                 **quality_report,
-                'df': df,  # Keep DataFrame for visualization
+                'df': df,  
                 'file_path': os.path.join(city_path, file)
             }
             eda_results['missing_values'][file_type] = quality_report['missing_values']
@@ -49,7 +46,6 @@ class EDAAnalyzer:
         return eda_results
     
     def _generate_eda_report(self, eda_results, city):
-        """Generate EDA report using data from DataLoader"""
         report_path = f"outputs/data/{city}_eda_report.txt"
         
         with open(report_path, 'w') as f:
@@ -63,7 +59,6 @@ class EDAAnalyzer:
                 f.write(f"Memory: {analysis['memory_usage_mb']:.2f} MB\n")
                 f.write(f"Duplicates: {analysis['duplicates']}\n\n")
                 
-                # Missing values from DataLoader report
                 missing_info = analysis['missing_values']
                 if missing_info['columns_with_missing']:
                     f.write(" MISSING VALUES:\n")
@@ -86,7 +81,6 @@ class EDAAnalyzer:
         print(f"EDA report saved: {report_path}")
     
     def _create_eda_visualizations(self, eda_results, city):
-        """Create EDA visualizations (unchanged)"""
         try:
             self._plot_missing_values_heatmap(eda_results, city)
             self._plot_file_sizes_comparison(eda_results, city)
@@ -166,7 +160,7 @@ class EDAAnalyzer:
                 })
         
         if not quality_issues:
-            print(f"✅ No data quality issues to visualize for {city}")
+            print(f"No data quality issues to visualize for {city}")
             return
         
         issues_df = pd.DataFrame(quality_issues)

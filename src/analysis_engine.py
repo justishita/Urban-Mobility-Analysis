@@ -659,9 +659,30 @@ class AnalysisEngine:
         plt.savefig(f'outputs/visuals/{city}_route_analysis.png', dpi=300, bbox_inches='tight')
         plt.close()
         print(f"    Saved route analysis: outputs/visuals/{city}_route_analysis.png")
-    
 
-        def _load_route_names_from_gtfs(self, city):
+    def create_advanced_analysis(self, city, data):
+        """Create advanced analysis graphs"""
+        try:
+            print(f"  📈 Creating advanced analysis for {city}...")
+            
+            if 'route_stats' in data and 'trip_stop_events' in data:
+                self._plot_route_popularity_comparison(city, data['route_stats'], data['trip_stop_events'])
+            
+            if 'route_stats' in data and 'hourly_service' in data:
+                self._plot_demand_service_gap(city, data['route_stats'], data['hourly_service'])
+                
+            print(f"  ✅ Advanced analysis completed for {city}")
+            
+        except Exception as e:
+            print(f"  Error in advanced analysis: {e}")
+
+    
+    def _load_route_names_from_gtfs(self, city):
+        """Load route names from GTFS data - Simple implementation to avoid errors"""
+        # Return empty dictionary to prevent errors
+        return {}
+    
+    def _load_route_names_from_gtfs(self, city):
             """Load route names from GTFS data"""
             try:
                 from data_loader import DataLoader
@@ -685,41 +706,18 @@ class AnalysisEngine:
                 print(f"Error loading route names: {e}")
                 return {}
 
-        def _get_best_route_name(self, row):
-            """Get the best available route name from row data"""
-            route_long_name = row.get('route_long_name', '')
-            route_short_name = row.get('route_short_name', '')
-            route_id = str(row.get('route_id', ''))
+    def _get_best_route_name(self, row):
+        """Get the best available route name from row data"""
+        route_long_name = row.get('route_long_name', '')
+        route_short_name = row.get('route_short_name', '')
+        route_id = str(row.get('route_id', ''))
             
-            if route_long_name and str(route_long_name) != 'nan':
-                return str(route_long_name)
-            elif route_short_name and str(route_short_name) != 'nan':
-                return str(route_short_name)
-            else:
-                return f"Route {route_id}"
-    
-
-    def create_advanced_analysis(self, city, data):
-        """Create advanced analysis graphs"""
-        try:
-            print(f"  📈 Creating advanced analysis for {city}...")
-            
-            if 'route_stats' in data and 'trip_stop_events' in data:
-                self._plot_route_popularity_comparison(city, data['route_stats'], data['trip_stop_events'])
-            
-            if 'route_stats' in data and 'hourly_service' in data:
-                self._plot_demand_service_gap(city, data['route_stats'], data['hourly_service'])
-                
-            print(f"  ✅ Advanced analysis completed for {city}")
-            
-        except Exception as e:
-            print(f"  Error in advanced analysis: {e}")
-
-    
-    def _load_route_names_from_gtfs(self, city):
-        """Load route names from GTFS data - Simple implementation to avoid errors"""
-        # Return empty dictionary to prevent errors
-        return {}
+        if route_long_name and str(route_long_name) != 'nan':
+            return str(route_long_name)
+        elif route_short_name and str(route_short_name) != 'nan':
+            return str(route_short_name)
+        else:
+            return f"Route {route_id}"
 
     def _get_best_route_name(self, row):
         """Get the best available route name from row data"""

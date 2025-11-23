@@ -53,7 +53,6 @@ class SparkProcessor:
             return None
     
     def _load_collections_from_mongodb(self, city, mongo_manager):
-        """Load all collections from MongoDB for a city"""
         collections_data = {}
         file_types = ['routes', 'trips', 'stop_times', 'stops', 'agency', 'calendar']
         

@@ -43,7 +43,7 @@ def print_executive_summary(report):
         print(f"Error printing executive summary: {e}")
         traceback.print_exc()
     print("\n" + "="*60)
-    
+
 def main():
     """Main execution function"""
     print("Starting Urban Mobility Pipeline")
@@ -70,14 +70,11 @@ def main():
             except Exception as e:
                 print(f"EDA failed for {city}: {e}")
 
-        # Step 3: Setup Spark - FIXED CALL
+        # Step 3: Setup Spark 
         print("\n3. Spark Setup")
-        spark_manager = SparkManager()  # Create instance first
-        spark = spark_manager.spark     # Access spark property
-        
-        # OR use the class method directly:
-        # spark = SparkManager.get_spark_session()
-        
+        spark_manager = SparkManager() 
+        spark = spark_manager.spark     
+                
         if spark is None:
             print("Spark setup failed. Please install Spark dependencies (pyspark, findspark).")
             return

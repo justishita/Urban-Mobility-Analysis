@@ -7,9 +7,6 @@ from config import Config
 warnings.filterwarnings('ignore')
 
 class SparkManager:
-    """
-    Singleton manager for SparkSession with MongoDB integration.
-    """
     _instance: Optional['SparkManager'] = None
     _spark: Optional[SparkSession] = None
     
@@ -92,30 +89,24 @@ class SparkManager:
                 .getOrCreate()
             )
             self._spark.sparkContext.setLogLevel("WARN")
-            print("✅ Basic Spark session created (MongoDB features disabled)")
+            print("Basic Spark session created (MongoDB features disabled)")
         except Exception as e:
-            print(f"❌ Basic Spark session also failed: {e}")
+            print(f"Basic Spark session also failed: {e}")
             raise RuntimeError(f"Failed to initialize any Spark session: {str(e)}")
     
     @property
     def spark(self) -> SparkSession:
-        """Get the SparkSession instance."""
         if self._spark is None:
             self._initialize_spark()
         return self._spark
-
-    # FIXED: Remove the duplicate get_spark_session instance method
-    # and keep only the class method
     
     @classmethod
     def get_spark_session(cls) -> SparkSession:
-        """Get Spark session instance (class method)."""
         instance = cls()
         return instance.spark
 
     @staticmethod
     def stop_spark(spark):
-        """Stop the Spark session."""
         if spark:
             spark.stop()
             print("Spark session stopped successfully!")

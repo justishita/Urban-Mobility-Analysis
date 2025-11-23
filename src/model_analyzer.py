@@ -6,13 +6,10 @@ import numpy as np
 import traceback
 
 class ModelAnalyzer:
-    """Analyze model results and generate insights"""
-
     def __init__(self, spark):
         self.spark = spark
 
     def analyze_feature_importance(self, models, feature_cols, problem_type):
-        """Gather feature importances from tree models. Return dict."""
         print("Analyzing feature importance...")
         importance_results = {}
         for name, model in models.items():
@@ -23,9 +20,7 @@ class ModelAnalyzer:
                     try:
                         importances = vector_importances.toArray().tolist()
                     except Exception:
-                        # sometimes it's already a list
                         importances = list(vector_importances)
-                    # pair with feature names (feature_cols assumed to align with assembler order)
                     pairs = list(zip(feature_cols, importances))
                     pairs.sort(key=lambda x: x[1], reverse=True)
                     importance_results[name] = pairs
@@ -74,7 +69,6 @@ class ModelAnalyzer:
             feat_names = [f for f, _ in top_feats]
             insights['recommendations'].append("Top predictive features: " + ", ".join(feat_names))
 
-        # city-level patterns from modeling_df (if it's a Spark DataFrame)
         try:
             if hasattr(modeling_df, "groupBy"):
                 df = modeling_df.select('city', 'avg_surge_multiplier', 'ride_count').groupBy('city').agg({'avg_surge_multiplier':'mean','ride_count':'sum'})
