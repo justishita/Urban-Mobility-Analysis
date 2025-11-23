@@ -1,13 +1,8 @@
-import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-import requests
-import time
 from config import Config
 from pymongo import MongoClient
-import json
 from math import radians, sin, cos, sqrt, atan2
-
 
 class RideShareSimulator:    
     def __init__(self):
@@ -85,34 +80,32 @@ class RideShareSimulator:
         surge = 1.0
         
         if (hour >= 8 and hour <= 11) or (hour >= 16 and hour <= 21):
-            surge += 0.4  # Higher surge during actual peak hours
+            surge += 0.4 
         
-        # **LUNCH TIME SURGE** (1 PM - 3 PM)
         elif hour >= 13 and hour <= 15:
             surge += 0.2
         
-        # **LATE NIGHT SURGE** (10 PM - 2 AM)
         elif hour >= 22 or hour <= 2:
-            surge += 0.5  # Higher for safety/availability
+            surge += 0.5 
         
         if day_of_week >= 5: 
             surge += 0.3
-        elif day_of_week == 4 and hour >= 16:  # Friday evening
+        elif day_of_week == 4 and hour >= 16:  
             surge += 0.2
         
-        # **FESTIVAL AND HOLIDAY SURGE** (Major Indian festivals)
+        # FESTIVAL AND HOLIDAY SURGE
         festival_surge = self._get_festival_surge(timestamp, city)
         surge += festival_surge
         
-        # Location-based surge (business districts, airports, etc.)
+        # Location-based surge business districts, airports, etc.
         location_surge = self._get_location_surge(start_lat, start_lon, city)
         surge += location_surge
         
-        # Weather factor (rainy season surge)
+        # rainy season surge
         weather_surge = self._get_weather_surge(month, city)
         surge += weather_surge
         
-        # Add some randomness
+        #randomness
         surge += np.random.uniform(-0.1, 0.1)
         
         return max(1.0, min(5.0, surge))
@@ -126,47 +119,44 @@ class RideShareSimulator:
         if month == 1 and day in [1, 14, 26]:  # New Year, Makar Sankranti, Republic Day
             surge += 0.8
         
-        # February-March (Holi season)
-        elif month == 3 and day in [10, 11, 12, 13]:  # Holi dates (example)
-            surge += 1.2  # Very high surge during Holi
+        # March 
+        elif month == 3 and day in [10, 11, 12, 13]:  
+            surge += 1.2 
         
         # August-September (Rakhi, Janmashtami, Ganesh Chaturthi)
-        elif month == 8 and day in [15, 19, 30]:  # Independence Day, Rakhi, Janmashtami
+        elif month == 8 and day in [15, 19, 30]: 
             surge += 0.7
-        elif month == 9 and day in [7, 8, 9, 17]:  # Ganesh Chaturthi
+        elif month == 9 and day in [7, 8, 9, 17]: 
             surge += 0.9
         
-        # October (Durga Puja/Dussehra season)
-        elif month == 10 and day in [12, 13, 14, 15, 23, 24, 31]:  # Durga Puja, Dussehra, Diwali prep
+        # October (Durga Puja/Dussehra)
+        elif month == 10 and day in [12, 13, 14, 15, 23, 24, 31]:  
             surge += 1.0
         
-        # November (Diwali season - HIGHEST SURGE)
-        elif month == 11 and day in [1, 2, 3, 4, 12, 13, 14]:  # Diwali week
-            surge += 1.5  # Maximum surge during Diwali
+        # November (diwali)
+        elif month == 11 and day in [1, 2, 3, 4, 12, 13, 14]: 
+            surge += 1.5  
         
         # December (Christmas/New Year eve)
-        elif month == 12 and day in [24, 25, 31]:  # Christmas Eve, Christmas, New Year Eve
+        elif month == 12 and day in [24, 25, 31]:  
             surge += 1.0
         
-        # **CITY-SPECIFIC FESTIVALS**
         if city == 'delhi':
-            # Delhi specific festivals
-            if month == 10:  # Durga Puja in Delhi
+            if month == 10:  
                 surge += 0.3
         elif city == 'bangalore':
-            # Bangalore specific festivals
-            if month == 8:  # Ganesh Chaturthi in Bangalore
+            if month == 8:  
                 surge += 0.4
-            if month == 4:  # Ugadi
+            if month == 4:  
                 surge += 0.3
         
         return surge
 
     def _get_weather_surge(self, month, city):
-        """Account for monsoon/weather related surge"""
+        """weather related surge"""
         surge = 0.0
         
-        # Monsoon season (June-September) - higher demand due to rain
+        # Monsoon season 
         if month >= 6 and month <= 9:
             surge += 0.3
         
@@ -180,7 +170,6 @@ class RideShareSimulator:
         """Calculate location-based surge multiplier for Indian cities"""
         surge = 0.0
         
-        # **DELHI HIGH SURGE AREAS**
         if city == 'delhi':
             high_surge_areas = [
                 {'lat': 28.6139, 'lon': 77.2090, 'radius': 3, 'multiplier': 0.3},  # Central Delhi
@@ -190,7 +179,6 @@ class RideShareSimulator:
                 {'lat': 28.7041, 'lon': 77.1025, 'radius': 2, 'multiplier': 0.2},  # North Campus
             ]
         
-        # **BANGALORE HIGH SURGE AREAS**
         elif city == 'bangalore':
             high_surge_areas = [
                 {'lat': 12.9716, 'lon': 77.5946, 'radius': 3, 'multiplier': 0.3},  # MG Road
@@ -210,7 +198,6 @@ class RideShareSimulator:
         return surge
 
     def calculate_fare(self, service, vehicle_type, distance_km, duration_mins, surge_multiplier):
-        """Calculate fare based on pricing model"""
         if service in self.pricing_models and vehicle_type in self.pricing_models[service]:
             model = self.pricing_models[service][vehicle_type]
             fare = (model['base'] + 
@@ -221,7 +208,6 @@ class RideShareSimulator:
             # Apply surge
             fare *= surge_multiplier
             
-            # Round to nearest 10
             return round(fare / 10) * 10
         else:
             return 0
@@ -252,14 +238,11 @@ class RideShareSimulator:
             end_lat = center['lat'] + np.random.uniform(-0.3, 0.3)
             end_lon = center['lon'] + np.random.uniform(-0.3, 0.3)
             
-            # Get route info
             distance_km, duration_mins = self.get_route_info(start_lat, start_lon, end_lat, end_lon)
             
-            # Skip if distance is too small
             if distance_km < 1:
                 continue
             
-            # Random service and vehicle type
             service = np.random.choice(['uber', 'ola', 'rapido'])
             if service == 'rapido':
                 vehicle_type = 'bike'
@@ -305,10 +288,8 @@ class RideShareSimulator:
             db = client[self.config.DATABASE_NAME]
             collection = db[f"{city}_rides"]
             
-            # Clear existing data
             collection.delete_many({})
             
-            # Insert new data
             if rides:
                 collection.insert_many(rides)
                 print(f"Stored {len(rides)} ride records for {city}")
