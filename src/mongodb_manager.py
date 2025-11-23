@@ -109,7 +109,6 @@ class MongoDBManager:
             return False
     
     def create_indexes(self, collection_name, file_type):
-        """Create appropriate indexes for each collection type"""
         try:
             collection = self.db[collection_name]
             
@@ -141,7 +140,7 @@ class MongoDBManager:
             if file_type in index_configs:
                 for index_fields in index_configs[file_type]:
                     collection.create_index(index_fields)
-                print(f" Created indexes for {collection_name}")
+                print(f"Created indexes for {collection_name}")
                 
         except Exception as e:
             print(f"Error creating indexes for {collection_name}: {e}")
@@ -181,7 +180,6 @@ class MongoDBManager:
             return {}
     
     def get_collection_sample(self, collection_name, limit=5):
-        """Get sample documents from a collection"""
         try:
             collection = self.db[collection_name]
             documents = list(collection.find().limit(limit))
@@ -193,4 +191,4 @@ class MongoDBManager:
     def close_connection(self):
         if self.client:
             self.client.close()
-            print(" MongoDB connection closed")
+            print("MongoDB connection closed")
