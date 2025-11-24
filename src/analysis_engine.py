@@ -245,7 +245,6 @@ class AnalysisEngine:
             f.write(f"Route Mapping Report - {city.upper()}\n")
             f.write("=" * 60 + "\n\n")
             
-            # Top routes with their actual names
             f.write("TOP 20 BUSIEST ROUTES:\n")
             f.write("-" * 40 + "\n")
             
